@@ -4,13 +4,26 @@ import {
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
-import { isInvalid } from "@/lib/generic";
+import { isInvalid, isValidPositiveInteger } from "@/lib/generic";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request, { params }) {
   try {
     const resolvedParams = await params;
+    if (!isValidPositiveInteger(resolvedParams?.id)) {
+      await logWarning("POST /api/organization/Delete/[id]", {
+        message: "Invalid or missing organization ID.",
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid or missing organization ID.",
+          statusCode: 400,
+        },
+        { status: 400 },
+      );
+    }
     const organizationId = parseInt(resolvedParams.id);
 
     if (isInvalid(organizationId)) {
@@ -23,7 +36,7 @@ export async function POST(request, { params }) {
           message: "Invalid or missing organization ID.",
           statusCode: 400,
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -50,7 +63,7 @@ export async function POST(request, { params }) {
         message: Message,
         statusCode: StatusCode, // ✅ ADD THIS
       },
-      { status: 200 } // Always respond with 200 for frontend to parse
+      { status: 200 }, // Always respond with 200 for frontend to parse
     );
   } catch (error) {
     logError("POST /api/organization/Delete/[id]", error);
@@ -60,7 +73,7 @@ export async function POST(request, { params }) {
         message: "Internal server error",
         statusCode: 500,
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -74,7 +87,7 @@ async function deleteOrganizationById(id) {
   const result = await executeStoredProcedure(
     "usp_deleteorganization",
     inputParams,
-    outputmsgWithStatusCodeParams
+    outputmsgWithStatusCodeParams,
   );
 
   return result;

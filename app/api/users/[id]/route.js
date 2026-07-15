@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
-import { isInvalid } from "@/lib/generic";
+import { isInvalid, isValidUuid } from "@/lib/generic";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
@@ -12,6 +12,20 @@ export async function GET(request, { params }) {
     const authHeader = request.headers.get("authorization");
     const userUniqueId = resolvedParams?.id;
     const currentUserId = request.headers.get("loggedInUserId");
+
+    if (!isValidUuid(userUniqueId)) {
+      await logWarning(
+        "GET /api/users/[id]",
+        "Malformed userUniqueId path parameter.",
+        {
+          userUniqueId,
+        },
+      );
+      return NextResponse.json(
+        { message: "Invalid user identifier." },
+        { status: 400 },
+      );
+    }
 
     // 🔐 Step 1: Check token
     if (!authHeader || !authHeader.startsWith("Bearer")) {

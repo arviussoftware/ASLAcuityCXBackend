@@ -4,7 +4,7 @@ import {
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
 import { getAuditUser, logAudit } from "@/lib/auditLogger";
-import { isInvalid } from "@/lib/generic";
+import { isInvalid, isValidPositiveInteger } from "@/lib/generic";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +15,19 @@ export async function POST(request, { params }) {
     const resolvedParams = await Promise.resolve(params);
     const authHeader = request.headers.get("authorization");
     const userId = resolvedParams?.id;
+
+    // ADD THIS BLOCK
+    if (!isValidPositiveInteger(userId)) {
+      await logWarning(
+        "POST /api/users/resetpassword/[id]",
+        "Malformed userId path parameter.",
+        { userId },
+      );
+      return NextResponse.json(
+        { message: "Invalid user identifier." },
+        { status: 400 },
+      );
+    }
     const { oldPassword, newPassword, currentUserId } = await request.json();
 
     if (!authHeader || !authHeader.startsWith("Bearer")) {
@@ -130,10 +143,14 @@ export async function POST(request, { params }) {
         description: "User changed account password successfully.",
       });
 
-      await logSuccess("POST /api/users/resetpassword/[id]", "Password reset successfully.", {
-        userId,
-        currentUserId,
-      });
+      await logSuccess(
+        "POST /api/users/resetpassword/[id]",
+        "Password reset successfully.",
+        {
+          userId,
+          currentUserId,
+        },
+      );
     }
 
     return NextResponse.json(

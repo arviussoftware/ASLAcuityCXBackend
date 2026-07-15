@@ -5,7 +5,7 @@ import {
 } from "@/lib/sql.js";
 import { logAudit } from "@/lib/auditLogger";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
-import { isInvalid } from "@/lib/generic";
+import { isInvalid, isValidPositiveInteger } from "@/lib/generic";
 import { checkUserPrivilege } from "@/lib/auth/privilegeChecker";
 import { MODULES, PRIVILEGES } from "@/lib/constants/privileges";
 import {
@@ -27,6 +27,22 @@ export async function POST(request, { params }) {
     const authHeader = request.headers.get("authorization");
     const userId = resolvedParams?.id;
 
+    if (!isValidPositiveInteger(userId)) {
+      await logWarning(
+        "POST /api/users/update/[id]",
+        "Malformed userId path parameter.",
+        {
+          userId,
+        },
+      );
+      return NextResponse.json(
+        { message: "Invalid user identifier." },
+        { status: 400 },
+      );
+    }
+
+    const numericUserId = Number(userId); // ← ADD THIS LINE
+
     // Get request body
     const {
       loginId,
@@ -45,7 +61,7 @@ export async function POST(request, { params }) {
     } = await request.json();
 
     if (
-      isInvalid(userId) ||
+      //isInvalid(userId) ||
       isInvalid(currentUserId) ||
       isInvalid(loginId) ||
       isInvalid(userFullName) ||
@@ -127,7 +143,7 @@ export async function POST(request, { params }) {
     // ✅ Fetch existing user to check roles
     const existingUserResult = await executeStoredProcedure(
       "usp_GetSingleUser",
-      { userId },
+      { userId: numericUserId }, // ← was { userId }
       {},
     );
 
@@ -222,7 +238,7 @@ export async function POST(request, { params }) {
 
     // Call the stored procedure
     const result = await updateUserDetails({
-      userId,
+      userId: numericUserId, // ← was userId
       loginId,
       email,
       userFullName,

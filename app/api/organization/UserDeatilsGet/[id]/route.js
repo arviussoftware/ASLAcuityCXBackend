@@ -1,18 +1,19 @@
 //app/api/organization/UserDetailsGet/[id]/route.js
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
+import { isValidPositiveInteger } from "@/lib/generic";
 
 export async function GET(req, { params }) {
   const { id } = await params;
 
-  if (!id) {
+  if (!isValidPositiveInteger(id)) {
     await logWarning("GET /api/organization/UserDeatilsGet/[id]", {
-      message: "Organization ID is required",
+      message: "Invalid or missing organization ID",
     });
     return new Response(
       JSON.stringify({
         success: false,
-        message: "Organization ID is required",
+        message: "Invalid or missing organization ID",
       }),
       {
         status: 400,

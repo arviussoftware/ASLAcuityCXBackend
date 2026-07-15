@@ -4,7 +4,7 @@ import {
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
 import { logAudit } from "@/lib/auditLogger";
-import { isInvalid } from "@/lib/generic";
+import { isInvalid, isValidPositiveInteger } from "@/lib/generic";
 import {
   isSuperAdminFromRequest,
   isSuperAdminRoleId,
@@ -15,8 +15,23 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request, { params }) {
   try {
-    const { id } = await params;
-    const RoleIdToDelete = parseInt(id);
+    const resolvedParams = await params;
+
+    if (!isValidPositiveInteger(resolvedParams?.id)) {
+      await logWarning("POST /api/roleManagement/delete/[id]", {
+        message: "Invalid or missing role ID.",
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid or missing role ID.",
+          statusCode: 400,
+        },
+        { status: 400 },
+      );
+    }
+
+    const RoleIdToDelete = parseInt(resolvedParams.id);
 
     if (isInvalid(RoleIdToDelete)) {
       await logWarning("POST /api/roleManagement/delete/[id]", {

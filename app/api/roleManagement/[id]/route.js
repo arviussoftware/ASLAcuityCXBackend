@@ -4,6 +4,7 @@ import {
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
+import { isValidPositiveInteger } from "@/lib/generic";
 import ModulesModel from "@/lib/models/moduleview";
 import {
   isSuperAdminFromRequest,
@@ -15,8 +16,9 @@ const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
 
 export async function GET(request, { params }) {
   try {
+    const resolvedParams = await params; // ← ADD THIS
     const authHeader = request.headers.get("authorization");
-    const id = params.id;
+    const id = resolvedParams?.id;
 
     if (!authHeader || !authHeader.startsWith("Bearer")) {
       await logWarning("GET /api/roleManagement/[id]", {
@@ -24,8 +26,11 @@ export async function GET(request, { params }) {
         id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Unauthorized: Token missing" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: false,
+          message: "Unauthorized: Token missing",
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
@@ -36,18 +41,24 @@ export async function GET(request, { params }) {
         id,
       });
       return new Response(
-        JSON.stringify({ success: false, message: "Unauthorized: Invalid token" }),
-        { status: 401, headers: { "Content-Type": "application/json" } }
+        JSON.stringify({
+          success: false,
+          message: "Unauthorized: Invalid token",
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
 
-    if (!id || typeof id !== "string") {
+    if (!isValidPositiveInteger(id)) {
       await logWarning("GET /api/roleManagement/[id]", {
-        message: "Invalid id provided to fetch the roleManagement record.",
+        message: "Invalid id.",
       });
       return NextResponse.json(
-        { success: false, message: "Invalid id provided to fetch the roleManagement record." },
-        { status: 400 }
+        {
+          success: false,
+          message: "Invalid id provided to fetch the roleManagement record.",
+        },
+        { status: 400 },
       );
     }
 
@@ -58,8 +69,12 @@ export async function GET(request, { params }) {
         id,
       });
       return NextResponse.json(
-        { success: false, message: "You are not allowed to access Super Admin role.", modules: [] },
-        { status: 403 }
+        {
+          success: false,
+          message: "You are not allowed to access Super Admin role.",
+          modules: [],
+        },
+        { status: 403 },
       );
     }
 
@@ -67,11 +82,15 @@ export async function GET(request, { params }) {
     const statusResult = await executeStoredProcedure(
       "usp_GetModules",
       { p_id: id },
-      outputmsgWithStatusCodeParams
+      outputmsgWithStatusCodeParams,
     );
 
-    const statusCode = statusResult?.output?.statuscode ?? statusResult?.recordset?.[0]?.p_statuscode;
-    const outputMsg  = statusResult?.output?.outputmsg  ?? statusResult?.recordset?.[0]?.p_outputmsg;
+    const statusCode =
+      statusResult?.output?.statuscode ??
+      statusResult?.recordset?.[0]?.p_statuscode;
+    const outputMsg =
+      statusResult?.output?.outputmsg ??
+      statusResult?.recordset?.[0]?.p_outputmsg;
 
     if (Number(statusCode) === 404) {
       await logWarning("GET /api/roleManagement/[id]", {
@@ -79,16 +98,19 @@ export async function GET(request, { params }) {
         id,
       });
       return NextResponse.json(
-        { success: false, message: outputMsg || "No role found for the given ID", modules: [] },
-        { status: 404 }
+        {
+          success: false,
+          message: outputMsg || "No role found for the given ID",
+          modules: [],
+        },
+        { status: 404 },
       );
     }
 
     // Step 2: Modules data fetch
-    const dataResult = await executeStoredProcedure(
-      "usp_GetModules_Data",
-      { p_id: id }
-    );
+    const dataResult = await executeStoredProcedure("usp_GetModules_Data", {
+      p_id: id,
+    });
 
     const recordset = dataResult?.recordset || dataResult?.recordsets?.[0];
 
@@ -98,8 +120,12 @@ export async function GET(request, { params }) {
         id,
       });
       return NextResponse.json(
-        { success: false, message: outputMsg || "No modules found.", modules: [] },
-        { status: 404 }
+        {
+          success: false,
+          message: outputMsg || "No modules found.",
+          modules: [],
+        },
+        { status: 404 },
       );
     }
 
@@ -112,16 +138,19 @@ export async function GET(request, { params }) {
     });
 
     return NextResponse.json(
-      { success: true, message: "Modules fetched successfully", modules: modulesData },
-      { status: 200 }
+      {
+        success: true,
+        message: "Modules fetched successfully",
+        modules: modulesData,
+      },
+      { status: 200 },
     );
-
   } catch (error) {
     console.error("Error occurred while processing GET request:", error);
     logError("GET /api/roleManagement/[id]", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -131,7 +160,7 @@ async function setModulesModel(recordset) {
     throw new Error("Invalid recordset passed to setModulesModel");
   }
   const modules = recordset.map(
-    (module) => new ModulesModel(module.ID, module.ModuleName)
+    (module) => new ModulesModel(module.ID, module.ModuleName),
   );
   return modules;
 }

@@ -5,7 +5,7 @@ import {
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
-import { isInvalid } from "@/lib/generic";
+import { isInvalid, isValidPositiveInteger } from "@/lib/generic";
 
 import { checkUserPrivilege } from "@/lib/auth/privilegeChecker";
 import { MODULES, PRIVILEGES } from "@/lib/constants/privileges";
@@ -19,6 +19,19 @@ export async function POST(request, { params }) {
     const authHeader = request.headers.get("authorization");
     const orgIds =
       request.headers.get("orgIds") || request.headers.get("orgId");
+    // ADD THIS BLOCK
+    if (!isValidPositiveInteger(resolvedParams?.id)) {
+      await logWarning(
+        "POST /api/users/delete/[id]",
+        "Malformed userId path parameter.",
+        { rawId: resolvedParams?.id },
+      );
+      return NextResponse.json(
+        { message: "Invalid user identifier." },
+        { status: 400 },
+      );
+    }
+
     const userIdToDelete = parseInt(resolvedParams?.id);
     const { currentUserId } = await request.json();
 
@@ -108,10 +121,14 @@ export async function POST(request, { params }) {
       );
     }
 
-    await logSuccess("POST /api/users/delete/[id]", "User deleted successfully.", {
-      userIdToDelete,
-      currentUserId,
-    });
+    await logSuccess(
+      "POST /api/users/delete/[id]",
+      "User deleted successfully.",
+      {
+        userIdToDelete,
+        currentUserId,
+      },
+    );
 
     return NextResponse.json(
       { message: result.output.outputmsg },

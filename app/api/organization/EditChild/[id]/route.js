@@ -3,6 +3,7 @@ import {
   executeStoredProcedure,
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
+import { isInvalid, isValidPositiveInteger } from "@/lib/generic";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
@@ -25,9 +26,35 @@ const smartCapitalize = (str) => {
     .join(" ");
 };
 
-export async function POST(request) {
+export async function POST(request, { params }) {
   try {
+    const resolvedParams = await Promise.resolve(params);
+    const routeId = resolvedParams?.id;
+
+    if (!isValidPositiveInteger(routeId)) {
+      await logWarning("POST /api/organization/EditChild/[id]", {
+        message: "Malformed id path parameter.",
+        routeId,
+      });
+      return NextResponse.json(
+        { message: "Invalid organization identifier." },
+        { status: 400 },
+      );
+    }
+
     const { name, description, userId, OrganizationId } = await request.json();
+
+    if (Number(routeId) !== Number(OrganizationId)) {
+      await logWarning("POST /api/organization/EditChild/[id]", {
+        message: "Path id and body OrganizationId mismatch.",
+        routeId,
+        OrganizationId,
+      });
+      return NextResponse.json(
+        { message: "Organization identifier mismatch." },
+        { status: 400 },
+      );
+    }
 
     if (!name) {
       await logWarning("POST /api/organization/EditChild/[id]", {
@@ -39,7 +66,7 @@ export async function POST(request) {
           success: false,
           message: "Organization name required.",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -53,6 +80,8 @@ export async function POST(request) {
       OrganizationId,
     });
 
+    // ...rest unchanged
+
     if (parseInt(result.output.statuscode) === 200) {
       await logSuccess("POST /api/organization/EditChild/[id]", {
         message: result.output.outputmsg || "Organization updated successfully",
@@ -60,7 +89,7 @@ export async function POST(request) {
       });
       return NextResponse.json(
         { success: true, message: result.output.outputmsg },
-        { status: 200 }
+        { status: 200 },
       );
     } else {
       await logWarning("POST /api/organization/EditChild/[id]", {
@@ -94,7 +123,7 @@ async function editOrganization({ name, description, userId, OrganizationId }) {
     const result = await executeStoredProcedure(
       "usp_editorganization",
       inputParams,
-      outputmsgWithStatusCodeParams
+      outputmsgWithStatusCodeParams,
     );
 
     return result;

@@ -6,8 +6,11 @@ import {
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
 import { logAudit } from "@/lib/auditLogger";
-import { isInvalid } from "@/lib/generic";
-import { isSuperAdminFromRequest, isSuperAdminRoleId } from "@/lib/auth/superAdmin";
+import { isInvalid, isValidPositiveInteger } from "@/lib/generic";
+import {
+  isSuperAdminFromRequest,
+  isSuperAdminRoleId,
+} from "@/lib/auth/superAdmin";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +29,22 @@ const smartCapitalize = (str) => {
 
 export async function POST(request, { params }) {
   try {
-    const roleId = parseInt(params.id);
+    const resolvedParams = await params;
+
+    if (!isValidPositiveInteger(resolvedParams?.id)) {
+      await logWarning("POST /api/roleManagement/edit/[id]", {
+        message: "Invalid or missing role ID.",
+      });
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Invalid or missing role ID.",
+          statusCode: 400,
+        },
+        { status: 400 },
+      );
+    }
+    const roleId = parseInt(resolvedParams.id);
 
     if (isInvalid(roleId)) {
       await logWarning("POST /api/roleManagement/edit/[id]", {

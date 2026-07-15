@@ -1,6 +1,6 @@
 // app/api/interactions/[id]/route.js
 
-import { isInvalid } from "@/lib/generic";
+import { isInvalid, isValidPositiveInteger } from "@/lib/generic";
 import { NextResponse } from "next/server";
 import { setInteractions } from "@/lib/models/interaction";
 import {
@@ -18,6 +18,7 @@ export async function GET(request, { params }) {
   try {
     const authHeader = request.headers.get("authorization");
     const { id: interactionId } = await params;
+
     const loggedInUserId = request.headers.get("loggedInUserId");
     const userName = request.headers.get("userName");
     const timezone = request.headers.get("timezone");
@@ -41,7 +42,18 @@ export async function GET(request, { params }) {
         { status: 401, headers: { "Content-Type": "application/json" } },
       );
     }
-    if (isInvalid(loggedInUserId) || isInvalid(interactionId)) {
+    if (!isValidPositiveInteger(interactionId)) {
+      await logWarning(
+        `GET /api/interactions/${interactionId}`,
+        "Invalid interactionId path parameter.",
+      );
+      return NextResponse.json(
+        { message: "Invalid interaction identifier." },
+        { status: 400 },
+      );
+    }
+
+    if (isInvalid(loggedInUserId)) {
       return NextResponse.json(
         { message: "Headers or Parameter are missing or undefined or empty." },
         { status: 400 },
@@ -103,7 +115,10 @@ export async function GET(request, { params }) {
   } catch (error) {
     logError(`GET /api/interactions/${interactionId}`, error);
     // Return generic message — never expose raw internal error details to clients
-    return NextResponse.json({ message: "Internal server error." }, { status: 500 });
+    return NextResponse.json(
+      { message: "Internal server error." },
+      { status: 500 },
+    );
   }
 }
 
