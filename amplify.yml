@@ -5,6 +5,7 @@ frontend:
     preBuild:
       commands:
         - rm -rf .next
+        - export NODE_OPTIONS="--max-old-space-size=8192"
         - npm ci --legacy-peer-deps
 
     build:
