@@ -26,6 +26,7 @@ import {
   writeRestoreRecord,
   resolveSourceType as resolveGlacierSourceType,
   isGlacierRestoreRequiredError,
+  getObjectRestoreStatus,
 } from "@/lib/glacierRestoreTracker";
 
 export const maxDuration = 300;
@@ -391,14 +392,38 @@ async function runBulkDownloadJob({
           interactionId,
           filePath: fileLocation,
         });
-        const trackedStatus = String(
+        let trackedStatus = String(
           record?.Status ?? record?.status ?? "",
         ).toUpperCase();
+
         if (trackedStatus && trackedStatus !== "RETRIEVED") {
-          notRetrievedCount++;
-          notRetrievedCallIds.push(safeCallId);
-          console.log(`${tag} SKIPPED — Glacier status is "${trackedStatus}"`);
-          return;
+          // If the database says retrieval is in progress, check S3 dynamically in case it finished
+          if (trackedStatus === "IN_PROGRESS" || trackedStatus === "INITIATED") {
+            try {
+              const actualS3Status = await getObjectRestoreStatus({
+                filePath: fileLocation,
+                fileSourceType: "aws-s3",
+              });
+              if (actualS3Status && actualS3Status.status === "retrieved") {
+                await writeRestoreRecord({
+                  interactionId,
+                  filePath: fileLocation,
+                  status: "retrieved",
+                });
+                console.log(`${tag} Auto-healed: S3 Glacier restore is complete. Continuing download...`);
+                trackedStatus = "RETRIEVED";
+              }
+            } catch (err) {
+              console.error(`${tag} Failed to check actual S3 restore status for interaction: ${interactionId}`, err.message);
+            }
+          }
+
+          if (trackedStatus !== "RETRIEVED") {
+            notRetrievedCount++;
+            notRetrievedCallIds.push(safeCallId);
+            console.log(`${tag} SKIPPED — Glacier status is "${trackedStatus}"`);
+            return;
+          }
         }
       }
 

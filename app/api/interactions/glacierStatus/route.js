@@ -8,10 +8,13 @@ import {
   writeRestoreRecord,
 } from "@/lib/glacierRestoreTracker";
 import { logError, logWarning } from "@/lib/errorLogger";
+import { connectToDatabase } from "@/lib/sql.js";
 
 export const dynamic = "force-dynamic";
 
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
+
+
 
 function verifyAuth(req) {
   const authHeader = req.headers.get("authorization") || "";
@@ -90,6 +93,35 @@ async function getStatusForItem(item) {
   });
 
   if (trackedResponse) {
+    if (trackedResponse.status === "retrieving") {
+      const nextCheckStr = trackedRecord?.NextCheckAt ?? trackedRecord?.nextcheckat;
+      const nextCheck = nextCheckStr ? new Date(nextCheckStr) : null;
+      const now = new Date();
+
+      if (!nextCheck || nextCheck < now) {
+        try {
+          const actualS3Status = await getObjectRestoreStatus({ filePath, fileSourceType });
+          if (actualS3Status && actualS3Status.status !== "retrieving") {
+            await writeRestoreRecord({
+              interactionId,
+              filePath,
+              status: actualS3Status.status,
+            });
+            trackedResponse.status = actualS3Status.status;
+            trackedResponse.message = actualS3Status.message;
+          } else {
+            // Still retrieving: throttle the next check to 30 minutes in the future to protect S3 API costs
+            const pool = await connectToDatabase();
+            await pool.query(
+              'UPDATE public."TblLog_GlacierRestoration" SET "NextCheckAt" = now() + interval \'30 minutes\' WHERE "InteractionId" = $1 AND "PayloadType" = \'AUDIO\'',
+              [String(interactionId)]
+            );
+          }
+        } catch (err) {
+          console.error("Failed to dynamically check S3 restore status for item:", interactionId, err.message);
+        }
+      }
+    }
     return trackedResponse;
   }
 
