@@ -10,7 +10,16 @@ const nextConfig = {
   poweredByHeader: false,
 
   // AWS SDK to prevent hashed module
-  transpilePackages: [
+  // transpilePackages: [
+  //   "@aws-sdk/client-s3",
+  //   "@aws-sdk/client-connect",
+  //   "@aws-sdk/client-transcribe",
+  //   "@aws-sdk/s3-request-presigner",
+  //   "aws-sdk",
+  //   "pg",
+  // ],
+
+  serverExternalPackages: [
     "@aws-sdk/client-s3",
     "@aws-sdk/client-connect",
     "@aws-sdk/client-transcribe",
