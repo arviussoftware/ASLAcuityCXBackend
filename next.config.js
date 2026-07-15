@@ -5,18 +5,18 @@
 // and version is running on this API server.
 
 const nextConfig = {
-  output: "standalone",
+  // output: "standalone",
   // ── Security: suppress X-Powered-By header ──────────────────────────────
   poweredByHeader: false,
 
-  // AWS SDK to prevent hashed module 
+  // AWS SDK to prevent hashed module
   transpilePackages: [
     "@aws-sdk/client-s3",
     "@aws-sdk/client-connect",
     "@aws-sdk/client-transcribe",
     "@aws-sdk/s3-request-presigner",
     "aws-sdk",
-    "pg"
+    "pg",
   ],
 
   // ── Security: hardened HTTP response headers for all API routes ──────────
