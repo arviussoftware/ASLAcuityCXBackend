@@ -1,0 +1,10 @@
+{
+  "name": "acuitycx-lambda-db-sql-executor",
+  "version": "1.0.0",
+  "description": "AWS Lambda function for Postgres DB SQL execution and schema seeding",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "pg": "^8.20.0"
+  }
+}

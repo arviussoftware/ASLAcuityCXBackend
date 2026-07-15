@@ -1,0 +1,48 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install --ignore-scripts
+    build:
+      commands:
+        - echo "DB_CLIENT=$DB_CLIENT" >> .env.production
+        - echo "POSTGRES_SCHEMA=$POSTGRES_SCHEMA" >> .env.production
+        - echo "API_SECRET_KEY=$API_SECRET_KEY" >> .env.production
+        - echo "NEXT_PUBLIC_API_TOKEN=$NEXT_PUBLIC_API_TOKEN" >> .env.production
+        - echo "SUPER_ADMIN_ROLE_ID=$SUPER_ADMIN_ROLE_ID" >> .env.production
+        - echo "LICENSE_PRIVATE_KEY=$LICENSE_PRIVATE_KEY" >> .env.production
+        - echo "LICENSE_PUBLIC_KEY=$LICENSE_PUBLIC_KEY" >> .env.production
+        - echo "FRONTEND_ORIGIN=$FRONTEND_ORIGIN" >> .env.production
+        - echo "ENCRYPTION_KEY=$ENCRYPTION_KEY" >> .env.production
+        - echo "NEXT_PUBLIC_CLIENT_ENCRYPT_KEY=$NEXT_PUBLIC_CLIENT_ENCRYPT_KEY" >> .env.production
+        - echo "LAMBDA_API_URL=$LAMBDA_API_URL" >> .env.production
+        - echo "USE_LAMBDA_PROXY=$USE_LAMBDA_PROXY" >> .env.production
+        - echo "POSTGRES_HOST=$POSTGRES_HOST" >> .env.production
+        - echo "POSTGRES_PORT=$POSTGRES_PORT" >> .env.production
+        - echo "POSTGRES_DB=$POSTGRES_DB" >> .env.production
+        - echo "POSTGRES_USER=$POSTGRES_USER" >> .env.production
+        - echo "POSTGRES_PASSWORD=$POSTGRES_PASSWORD" >> .env.production
+        - echo "BUCKET=$BUCKET" >> .env.production
+        - echo "LICENSE_FILE_KEY=$LICENSE_FILE_KEY" >> .env.production
+        - echo "LICENSE_JSON_KEY=$LICENSE_JSON_KEY" >> .env.production
+        - echo "LICENSE_DIR=$LICENSE_DIR" >> .env.production
+        - echo "REGION=$REGION" >> .env.production
+        - echo "ASL_LogFolder=$ASL_LogFolder" >> .env.production
+        - echo "Amazon_SECRET_ACCESS_KEY=$Amazon_SECRET_ACCESS_KEY" >> .env.production
+        - echo "Amazon_ACCESS_KEY_ID=$Amazon_ACCESS_KEY_ID" >> .env.production
+        - echo "SMTP_HOST=$SMTP_HOST" >> .env.production
+        - echo "SMTP_PORT=$SMTP_PORT" >> .env.production
+        - echo "SMTP_USER=$SMTP_USER" >> .env.production
+        - echo "SMTP_PASS=$SMTP_PASS" >> .env.production
+        - echo "BULK_DOWNLOAD_PATH=$BULK_DOWNLOAD_PATH" >> .env.production
+        - npm run build
+
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - .next/cache/**/*
+      - node_modules/**/*

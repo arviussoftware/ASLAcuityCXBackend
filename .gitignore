@@ -1,0 +1,61 @@
+# Node modules
+node_modules/
+
+# Environment variables — NEVER commit secrets to git
+.env
+.env.local
+.env.production
+.env.development
+.env*.local
+
+# Next.js
+.next/
+
+# build folders
+dist/
+build/
+
+# Claude folder
+.claude/
+
+# logs
+logs/*.log
+npm-debug.log*
+
+# Temporary codex files
+.codex-tmp-*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# coverage
+coverage/
+
+#Files 
+test_all_endpoints.sh
+fix_stored_procedures.mjs
+fix_stored_procedures_1.mjs
+fix_stored_procedures_2.mjs
+fix_stored_procedures_3.mjs
+fix_stored_procedures_4.mjs
+api-audit.mjs
+api-audit-results.json
+api_test.mjs
+api_test_utom.mjs
+api_test_interactions.mjs
+api_test_dashboard_workspace.mjs
+.vercel
+
+# License files
+license.json
+license.lic
+
+# License files in project folders
+AcuityCXAPI/license.lic
+AcuityCXAPI/license.json
+AcuityCXAPI/data/license.json
