@@ -1,5 +1,5 @@
 version: 1
-
+ 
 frontend:
   phases:
     preBuild:
@@ -7,7 +7,7 @@ frontend:
         - rm -rf .next
         - export NODE_OPTIONS="--max-old-space-size=8192"
         - npm ci --legacy-peer-deps
-
+ 
     build:
       commands:
         - echo "DB_CLIENT=$DB_CLIENT" >> .env.production
@@ -40,23 +40,25 @@ frontend:
         - echo "SMTP_USER=$SMTP_USER" >> .env.production
         - echo "SMTP_PASS=$SMTP_PASS" >> .env.production
         - echo "BULK_DOWNLOAD_PATH=$BULK_DOWNLOAD_PATH" >> .env.production
-
+ 
         - npm run build
-
+ 
         - echo "Before cleanup:"
         - du -sh .next
-
+ 
         - rm -rf .next/cache
-
+        - find .next -name "*.map" -type f -delete
+ 
         - echo "After cleanup:"
         - du -sh .next
-
+ 
   artifacts:
     baseDirectory: .next
     files:
       - "**/*"
-
+ 
   cache:
     paths:
       - .next/cache/**/*
       - node_modules/**/*
+ 
