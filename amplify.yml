@@ -1,10 +1,12 @@
 version: 1
+
 frontend:
   phases:
     preBuild:
       commands:
         - rm -rf .next
         - npm ci --legacy-peer-deps
+
     build:
       commands:
         - echo "DB_CLIENT=$DB_CLIENT" >> .env.production
@@ -37,12 +39,20 @@ frontend:
         - echo "SMTP_USER=$SMTP_USER" >> .env.production
         - echo "SMTP_PASS=$SMTP_PASS" >> .env.production
         - echo "BULK_DOWNLOAD_PATH=$BULK_DOWNLOAD_PATH" >> .env.production
+
         - npm run build
+
+        - echo "===== Largest .next directories ====="
+        - du -h -d 2 .next | sort -hr | head -30
+
+        - echo "===== Largest .next files ====="
+        - find .next -type f -printf "%s %p\n" | sort -nr | head -30
 
   artifacts:
     baseDirectory: .next
     files:
       - "**/*"
+
   cache:
     paths:
       - .next/cache/**/*
