@@ -61,7 +61,7 @@ async function resolveSourceUrl(filePath, fileSourceType) {
       },
     });
 
-    return await getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 600 });
+    return await getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 3600 }); // 1 hour
   }
 
   if (filePath.startsWith("https://") || filePath.startsWith("http://")) {

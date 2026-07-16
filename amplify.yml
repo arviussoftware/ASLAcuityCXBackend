@@ -40,6 +40,13 @@ frontend:
         - echo "SMTP_USER=$SMTP_USER" >> .env.production
         - echo "SMTP_PASS=$SMTP_PASS" >> .env.production
         - echo "BULK_DOWNLOAD_PATH=$BULK_DOWNLOAD_PATH" >> .env.production
+        - echo "GCP_PROJECT_ID=$GCP_PROJECT_ID" >> .env.production
+        - echo "GCP_KEY_FILE=$GCP_KEY_FILE" >> .env.production
+        - echo "GCP_BUCKET=$GCP_BUCKET" >> .env.production
+        - echo "NETWORKNAME=$NETWORKNAME" >> .env.production
+        - echo "NETWORKPASSWORD=$NETWORKPASSWORD" >> .env.production
+        - echo "MAX_EXPORT_LIMIT=$MAX_EXPORT_LIMIT" >> .env.production
+        - echo "LICENSE_DECRYPT_KEY=$LICENSE_DECRYPT_KEY" >> .env.production
 
         - npm run build
 

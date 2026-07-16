@@ -393,7 +393,7 @@ export async function GET(request) {
   }
 }
 
-/* ── AWS S3 presigned URL (5 min expiry) ── */
+/* ── AWS S3 presigned URL (1 hour expiry) ── */
 async function getS3PresignedUrl(fullFilePath) {
   const creds = await getAWSCredentials();
   let bucket = creds.BUCKET;
@@ -419,7 +419,7 @@ async function getS3PresignedUrl(fullFilePath) {
     Key: key,
   });
 
-  return getSignedUrl(s3Client, command, { expiresIn: 300 });
+  return getSignedUrl(s3Client, command, { expiresIn: 3600 }); // 1 hour — prevents expired-URL media errors on slow networks / idle tabs
 }
 
 /* ── GCS presigned URL ── */

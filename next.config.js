@@ -15,7 +15,6 @@ const nextConfig = {
     "@aws-sdk/client-connect",
     "@aws-sdk/client-transcribe",
     "@aws-sdk/s3-request-presigner",
-    "aws-sdk",
     "pg",
   ],
 
