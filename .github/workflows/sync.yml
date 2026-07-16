@@ -1,4 +1,4 @@
-name: Sync Azure Main to GitHub Main
+name: Sync Azure Backend to GitHub Main
 
 on:
   workflow_dispatch:
@@ -11,7 +11,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout GitHub repo
+      - name: Checkout GitHub backend repository
         uses: actions/checkout@v4
         with:
           ref: main
@@ -23,39 +23,43 @@ jobs:
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions"
 
-      - name: Save GitHub workflow
+      - name: Add Azure repository
         run: |
-          cp -r .github /tmp/github-workflows
-
-      - name: Add Azure Repo
-        run: |
+          git remote remove azure 2>/dev/null || true
           git remote add azure "https://anything:${{ secrets.AZURE_PAT }}@dev.azure.com/techdot/ASLAcuityCXAPI/_git/ASLAcuityCXAPI"
 
-      - name: Fetch Azure main
+      - name: Fetch Azure main branch
         run: |
           git fetch azure main
 
-      - name: Reset GitHub main to Azure main
+      - name: Remove old backend files
         run: |
-          git reset --hard azure/main
-          git clean -fdx
+          find . -mindepth 1 \
+            ! -path "./.git" \
+            ! -path "./.git/*" \
+            ! -path "./.github" \
+            ! -path "./.github/*" \
+            -exec rm -rf {} +
 
-      - name: Restore GitHub workflows
+      - name: Copy AcuityCXAPI folder from Azure
         run: |
-          rm -rf .github
-          cp -r /tmp/github-workflows .github
+          git checkout azure/main -- AcuityCXAPI
 
-      - name: Commit workflow preservation
+          cp -a AcuityCXAPI/. .
+
+          rm -rf AcuityCXAPI
+
+      - name: Commit backend changes
         run: |
           git add -A
 
           if git diff --cached --quiet; then
-            echo "No additional workflow changes to commit"
+            echo "No backend changes found"
           else
-            git commit -m "Sync Azure main and preserve GitHub workflows"
+            git commit -m "Sync backend from Azure main"
           fi
 
-      - name: Push to GitHub main
+      - name: Push backend to GitHub main
         run: |
           git remote set-url origin "https://x-access-token:${{ secrets.GH_PAT }}@github.com/arviussoftware/ASLAcuityCXBackend.git"
-          git push origin main --force
+          git push origin main
