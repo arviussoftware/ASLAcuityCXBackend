@@ -1,0 +1,61 @@
+name: Sync Azure Main to GitHub Main
+
+on:
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout GitHub repo
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          token: ${{ secrets.GH_PAT }}
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+
+      - name: Save GitHub workflow
+        run: |
+          cp -r .github /tmp/github-workflows
+
+      - name: Add Azure Repo
+        run: |
+          git remote add azure "https://anything:${{ secrets.AZURE_PAT }}@dev.azure.com/techdot/ASLAcuityCXAPI/_git/ASLAcuityCXAPI"
+
+      - name: Fetch Azure main
+        run: |
+          git fetch azure main
+
+      - name: Reset GitHub main to Azure main
+        run: |
+          git reset --hard azure/main
+          git clean -fdx
+
+      - name: Restore GitHub workflows
+        run: |
+          rm -rf .github
+          cp -r /tmp/github-workflows .github
+
+      - name: Commit workflow preservation
+        run: |
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "No additional workflow changes to commit"
+          else
+            git commit -m "Sync Azure main and preserve GitHub workflows"
+          fi
+
+      - name: Push to GitHub main
+        run: |
+          git remote set-url origin "https://x-access-token:${{ secrets.GH_PAT }}@github.com/arviussoftware/ASLAcuityCXBackend.git"
+          git push origin main --force
