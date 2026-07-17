@@ -92,6 +92,13 @@ export async function GET(request) {
       );
     }
 
+    if (!/^[a-zA-Z0-9_-]+$/.test(pageKey)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid pageKey format." },
+        { status: 400 },
+      );
+    }
+
     const userId = Number(rawUserId);
 
     if (Number.isNaN(userId) || userId <= 0) {
@@ -155,6 +162,13 @@ export async function POST(request) {
     if (isInvalid(rawUserId) || !pageKey) {
       return NextResponse.json(
         { success: false, message: "userId and pageKey are required." },
+        { status: 400 },
+      );
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(pageKey)) {
+      return NextResponse.json(
+        { success: false, message: "Invalid pageKey format." },
         { status: 400 },
       );
     }

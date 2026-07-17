@@ -30,11 +30,6 @@ const nextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           // Referrer leakage reduction
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          // HSTS — instructs browsers to only use HTTPS for 1 year
-          {
-            key: "Strict-Transport-Security",
-            value: "max-age=31536000; includeSubDomains; preload",
-          },
           // Cross-domain policy — blocks Flash/PDF cross-domain read abuse
           { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
         ],

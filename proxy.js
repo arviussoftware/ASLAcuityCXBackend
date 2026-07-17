@@ -36,20 +36,14 @@ function applySecurityHeaders(response) {
   response.headers.set("X-Permitted-Cross-Domain-Policies", "none");
   response.headers.set("X-XSS-Protection", "1; mode=block");
 
-  if (process.env.NODE_ENV === "production") {
-    response.headers.set(
-      "Strict-Transport-Security",
-      "max-age=31536000; includeSubDomains; preload"
-    );
-  }
 
   const cspValue =
     "default-src 'self'; " +
     "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
     "style-src 'self' 'unsafe-inline'; " +
     "img-src 'self' data: blob: https:; " +
-    "media-src 'self' blob: data: https: http:; " +
-    "connect-src 'self' https: http:; " +
+    "media-src 'self' blob: data: https:; " +
+    "connect-src 'self' https:; " +
     "frame-ancestors 'self';";
   response.headers.set("Content-Security-Policy", cspValue);
 

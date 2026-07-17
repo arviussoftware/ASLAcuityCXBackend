@@ -8,7 +8,7 @@ import {
   writeRestoreRecord,
 } from "@/lib/glacierRestoreTracker";
 import { logError, logWarning } from "@/lib/errorLogger";
-import { connectToDatabase } from "@/lib/sql.js";
+import { connectToDatabase, executeStoredProcedure } from "@/lib/sql.js";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +60,7 @@ function buildTrackedStatusResponse({ interactionId, filePath, record }) {
     nextCheckAt: record?.NextCheckAt ?? record?.nextcheckat ?? null,
   };
 }
-async function getStatusForItem(item) {
+async function getStatusForItem(item, skipS3 = false) {
   const interactionId = normalizeInteractionId(
     item?.interactionId ?? item?.id ?? item?.interaction_id,
   );
@@ -98,7 +98,7 @@ async function getStatusForItem(item) {
       const nextCheck = nextCheckStr ? new Date(nextCheckStr) : null;
       const now = new Date();
 
-      if (!nextCheck || nextCheck < now) {
+      if (!skipS3 && (!nextCheck || nextCheck < now)) {
         try {
           const actualS3Status = await getObjectRestoreStatus({ filePath, fileSourceType });
           if (actualS3Status && actualS3Status.status !== "retrieving") {
@@ -110,12 +110,13 @@ async function getStatusForItem(item) {
             trackedResponse.status = actualS3Status.status;
             trackedResponse.message = actualS3Status.message;
           } else {
-            // Still retrieving: throttle the next check to 30 minutes in the future to protect S3 API costs
-            const pool = await connectToDatabase();
-            await pool.query(
-              'UPDATE public."TblLog_GlacierRestoration" SET "NextCheckAt" = now() + interval \'30 minutes\' WHERE "InteractionId" = $1 AND "PayloadType" = \'AUDIO\'',
-              [String(interactionId)]
-            );
+            // Still retrieving: throttle the next check to protect S3 API costs
+            await executeStoredProcedure("usp_updateglacierrestorenextcheckat", {
+              interactionid: Number(interactionId),
+              payloadtype: "AUDIO",
+              status: "",
+              interval_minutes: 30,
+            });
           }
         } catch (err) {
           console.error("Failed to dynamically check S3 restore status for item:", interactionId, err.message);
@@ -232,8 +233,9 @@ export async function POST(req) {
       return NextResponse.json({ statuses: [] });
     }
 
+    const isBatch = items.length > 1;
     const statuses = await Promise.all(
-      items.slice(0, 100).map((item) => getStatusForItem(item)),
+      items.slice(0, 100).map((item) => getStatusForItem(item, isBatch)),
     );
 
     return NextResponse.json({ statuses });

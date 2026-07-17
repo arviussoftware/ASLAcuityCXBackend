@@ -83,6 +83,21 @@ export async function POST(request, { params }) {
       );
     }
 
+    if (!isValidPositiveInteger(currentUserId)) {
+      return NextResponse.json(
+        { message: "Invalid currentUserId identifier." },
+        { status: 400 },
+      );
+    }
+
+    const hasInvalidOrg = orgIds.some(item => !item || !isValidPositiveInteger(item.orgId));
+    if (hasInvalidOrg) {
+      return NextResponse.json(
+        { message: "Invalid organization identifier inside list." },
+        { status: 400 },
+      );
+    }
+
     // 🔐 Check token
     if (!authHeader || !authHeader.startsWith("Bearer")) {
       await logWarning(

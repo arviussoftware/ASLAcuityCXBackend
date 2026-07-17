@@ -44,6 +44,13 @@ export async function POST(request, { params }) {
 
     const { name, description, userId, OrganizationId } = await request.json();
 
+    if (!isValidPositiveInteger(userId) || !isValidPositiveInteger(OrganizationId)) {
+      return NextResponse.json(
+        { message: "Invalid parameter format." },
+        { status: 400 },
+      );
+    }
+
     if (Number(routeId) !== Number(OrganizationId)) {
       await logWarning("POST /api/organization/EditChild/[id]", {
         message: "Path id and body OrganizationId mismatch.",

@@ -345,6 +345,13 @@ export async function GET(request) {
               }
             }
             // Already retrieved/restored and not expired! Serve normal.
+            if (interactionId) {
+              await writeRestoreRecord({
+                interactionId,
+                filePath: fullFilePath,
+                status: "READY",
+              }).catch(() => {});
+            }
           } else {
             // Needs retrieval
             if (interactionId) {
