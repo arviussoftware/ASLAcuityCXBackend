@@ -32,6 +32,8 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           // Cross-domain policy — blocks Flash/PDF cross-domain read abuse
           { key: "X-Permitted-Cross-Domain-Policies", value: "none" },
+          // HSTS — enforce HTTPS
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
         ],
       },
     ];

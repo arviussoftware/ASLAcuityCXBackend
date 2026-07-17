@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { setUsersRolesModel } from "@/lib/models/userroles";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export async function GET(request) {
       { status: 200 },
     );
   } catch (error) {
-    console.error("GET /api/userRoles/byOrg error:", error);
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    await logError("GET /api/userRoles/byOrg", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }

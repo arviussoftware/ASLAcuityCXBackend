@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -50,9 +51,9 @@ export async function GET(request) {
       );
     }
   } catch (error) {
-    console.error("Error in OrganizationDDL API:", error);
+    await logError("GET /api/interactions/organizationDDL", error);
     return NextResponse.json(
-      { message: "Internal server error.", error: error.message },
+      { message: "Internal server error." },
       { status: 500 }
     );
   }

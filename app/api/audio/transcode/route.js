@@ -10,6 +10,73 @@ import { isInvalid } from "@/lib/generic";
 import { NextResponse } from "next/server";
 import { spawn } from "child_process";
 import ffmpegPath from "ffmpeg-static";
+import path from "path";
+
+/* ── Path traversal guard ── */
+function validateFilePath(filePath) {
+  if (!filePath) return false;
+  if (
+    filePath.startsWith("s3://") || filePath.startsWith("gs://") ||
+    filePath.startsWith("http://") || filePath.startsWith("https://")
+  ) return true;
+
+  // Convert all forward slashes to backslashes for uniform Windows handling
+  let normalized = filePath.replace(/\//g, "\\");
+  
+  // Clean up duplicate slashes (except the leading double backslash of UNC paths)
+  const isUNC = normalized.startsWith("\\\\");
+  if (isUNC) {
+    normalized = "\\\\" + normalized.slice(2).replace(/\\+/g, "\\");
+  } else {
+    normalized = normalized.replace(/\\+/g, "\\");
+  }
+
+  // Must be absolute path or UNC network path
+  if (!normalized.startsWith("\\\\") && !/^[a-zA-Z]:\\/.test(normalized)) {
+    return false;
+  }
+
+  // Reject directory traversal
+  const segments = normalized.split("\\");
+  if (segments.includes("..") || segments.includes(".")) {
+    return false;
+  }
+
+  // Reject sensitive OS/system directories
+  let checkPath = normalized.toLowerCase();
+  
+  // Strip leading UNC host and share prefix
+  if (isUNC) {
+    const parts = checkPath.slice(2).split("\\").filter(Boolean);
+    if (parts.length >= 2) {
+      checkPath = parts.slice(2).join("\\");
+    } else {
+      checkPath = "";
+    }
+  } else {
+    // Strip drive letter
+    if (/^[a-z]:/i.test(checkPath)) {
+      checkPath = checkPath.slice(2);
+    }
+  }
+
+  if (checkPath.startsWith("\\")) {
+    checkPath = checkPath.slice(1);
+  }
+
+  const sensitiveDirectories = new Set([
+    "windows", "winnt", "system32", "program files", "program files (x86)",
+    "users", "recovery", "boot", "etc", "var", "usr", "bin", "sbin", "opt",
+    "sys", "proc", "dev", "lib", "boot", "root", "home"
+  ]);
+
+  const pathParts = checkPath.split("\\");
+  if (pathParts.length > 0 && sensitiveDirectories.has(pathParts[0])) {
+    return false;
+  }
+
+  return true;
+}
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -144,6 +211,10 @@ export async function GET(request) {
     }
     if (isInvalid(filePath)) {
       return NextResponse.json({ message: "Missing filePath." }, { status: 400 });
+    }
+    if (!validateFilePath(filePath)) {
+      logWarning("GET /api/audio/transcode", "Unsafe path blocked", { filePath });
+      return NextResponse.json({ message: "Invalid or unsafe filePath." }, { status: 400 });
     }
 
     const sourceUrl = await resolveSourceUrl(filePath, fileSourceType);

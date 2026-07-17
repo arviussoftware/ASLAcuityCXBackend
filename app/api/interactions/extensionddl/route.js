@@ -4,6 +4,7 @@ import {
   executeStoredProcedure,
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 import { setExtenion } from "@/lib/models/extensionDDL";
 
 export async function GET(request) {
@@ -34,7 +35,8 @@ export async function GET(request) {
       { status: result.output.statuscode }
     );
   } catch (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    await logError("GET /api/interactions/extensionddl", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 

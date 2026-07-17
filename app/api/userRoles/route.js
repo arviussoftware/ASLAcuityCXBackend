@@ -1,8 +1,8 @@
-// app/api/userRoles/route.js
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { setUsersRolesModel } from "@/lib/models/userroles";
 import { isSuperAdminFromRequest } from "@/lib/auth/superAdmin";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,8 @@ export async function GET(request) {
       );
     }
   } catch (error) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    await logError("GET /api/userRoles", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 

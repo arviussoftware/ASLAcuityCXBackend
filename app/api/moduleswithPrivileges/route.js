@@ -38,18 +38,12 @@ export async function GET(request) {
     const moduleId       = request.headers.get("moduleId");
     const orgIds         = request.headers.get("orgIds") || request.headers.get("orgId");
 
-    console.log("=== moduleswithPrivileges GET ===");
-    console.log("loggedInUserId:", loggedInUserId);
-    console.log("moduleId:", moduleId);
-    console.log("orgIds:", orgIds);
-    console.log("isSuperAdmin:", isSuperAdmin);
 
     if (
       isInvalid(loggedInUserId) ||
       isInvalid(moduleId) ||
       (!isSuperAdmin && isInvalid(orgIds))
     ) {
-      console.log("=== moduleswithPrivileges 400 Bad Request ===");
       return NextResponse.json(
         { message: "Headers are missing. Required: loggedInUserId, moduleId, orgIds" },
         { status: 400 },
@@ -72,7 +66,6 @@ export async function GET(request) {
         }
       }
 
-      console.log("=== moduleswithPrivileges returns Super Admin access ===");
       return NextResponse.json(
         { message: "Super Admin access", PrivilegeList: privileges, privileges },
         { status: 200 },
@@ -97,9 +90,6 @@ export async function GET(request) {
       }
     }
 
-    console.log("=== moduleswithPrivileges returned PrivilegeList ===");
-    console.log(PrivilegeList);
-
     return NextResponse.json(
       {
         message:       "Privileges fetched successfully",
@@ -111,7 +101,7 @@ export async function GET(request) {
   } catch (error) {
     console.error("moduleswithPrivileges error:", error);
     return NextResponse.json(
-      { message: error.message },
+      { message: "Internal server error" },
       { status: 500 },
     );
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -88,9 +89,9 @@ export async function POST(request) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("Error in uploadProfilePicture API:", error);
+    await logError("POST /api/uploadProfilePicture", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Upload failed" },
+      { success: false, message: "Upload failed" },
       { status: 500 }
     );
   }

@@ -50,7 +50,7 @@ export async function POST(request) {
       secure: false,
       requireTLS: true,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-      tls: { rejectUnauthorized: false },
+      // TLS certificate validation enabled (rejectUnauthorized defaults to true)
     });
 
     const baseUrl = process.env.REACT_APP_BASE_URL;
@@ -85,7 +85,7 @@ export async function POST(request) {
     logError("POST /api/generateForgotPasswordOtp", err);
     console.error("Generate OTP error:", err);
     return NextResponse.json(
-      { success: false, message: "Internal Server Error: " + err.message },
+      { success: false, message: "Internal server error" },
       { status: 500 },
     );
   }

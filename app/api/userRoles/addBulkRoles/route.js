@@ -4,6 +4,7 @@ import {
   executeStoredProcedure,
   outputmsgWithStatusCodeParams,
 } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 import { isInvalid } from "@/lib/generic";
 import { checkUserPrivilege } from "@/lib/auth/privilegeChecker";
 import { MODULES, PRIVILEGES } from "@/lib/constants/privileges";
@@ -99,11 +100,11 @@ export async function POST(request) {
       { status: statusCode }
     );
   } catch (error) {
-    console.error("Role assignment failed:", error);
+    await logError("POST /api/userRoles/addBulkRoles", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Internal Server Error: " + error.message,
+        message: "Internal server error",
       },
       { status: 500 }
     );

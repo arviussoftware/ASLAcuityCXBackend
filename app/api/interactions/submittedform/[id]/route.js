@@ -6,6 +6,7 @@ import {
 import { isInvalid } from "@/lib/generic";
 import { checkUserPrivilege } from "@/lib/auth/privilegeChecker";
 import { MODULES, PRIVILEGES } from "@/lib/constants/privileges";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -103,8 +104,9 @@ export async function GET(request, { params }) {
 
     return NextResponse.json({ message: "No forms found." }, { status: 404 });
   } catch (error) {
+    await logError("GET /api/interactions/submittedform/[id]", error);
     return NextResponse.json(
-      { message: `Server error: ${error.message}` },
+      { message: "Internal server error" },
       { status: 500 }
     );
   }

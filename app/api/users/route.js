@@ -160,8 +160,7 @@ export async function GET(request) {
     );
   } catch (error) {
     await logError("GET /api/users", error);
-    console.error("GET /api/users error:", error);
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 
@@ -251,8 +250,7 @@ export async function POST(request) {
     );
   } catch (error) {
     await logError("POST /api/users", error);
-    console.error("POST /api/users error:", error);
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 

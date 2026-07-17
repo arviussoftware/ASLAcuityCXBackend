@@ -146,8 +146,7 @@ export async function POST(request) {
       { status: privStatusCode || 400 },
     );
   } catch (error) {
-    console.error("Internal server error:", error);
-    logError("POST /api/roleManagement/save", error);
+    await logError("POST /api/roleManagement/save", error);
     return NextResponse.json(
       { success: false, message: "Internal server error." },
       { status: 500 },
@@ -169,15 +168,8 @@ async function saveRoleModulePrivileges(tvpData, uncheckedModuleIds, roleid, org
     );
     return result;
   } catch (error) {
-    console.error("saveRoleModulePrivileges exact error:", {
-      message: error.message,
-      stack: error.stack,
-      detail: error.detail,
-      hint: error.hint,
-      code: error.code,
-    });
-    logError("roleManagement/save/route.js:saveRoleModulePrivileges", error);
-    throw new Error(`Failed to save role-module-privilege mappings: ${error.message}`);
+    await logError("roleManagement/save/route.js:saveRoleModulePrivileges", error);
+    throw new Error(`Failed to save role-module-privilege mappings.`);
   }
 }
 
@@ -195,14 +187,7 @@ async function saveRoleModuleSourceAccess(sourceData, uncheckedModuleIds, roleid
     );
     return result;
   } catch (error) {
-    console.error("saveRoleModuleSourceAccess exact error:", {
-      message: error.message,
-      stack: error.stack,
-      detail: error.detail,
-      hint: error.hint,
-      code: error.code,
-    });
-    logError("roleManagement/save/route.js:saveRoleModuleSourceAccess", error);
-    throw new Error(`Failed to save role-module-source mappings: ${error.message}`);
+    await logError("roleManagement/save/route.js:saveRoleModuleSourceAccess", error);
+    throw new Error(`Failed to save role-module-source mappings.`);
   }
 }

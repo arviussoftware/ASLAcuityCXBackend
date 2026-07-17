@@ -2,6 +2,7 @@
 
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export async function POST(request) {
 
     return NextResponse.json({ message: "Success", roles }, { status: 200 });
   } catch (error) {
-    console.error("Error fetching roles by orgs:", error);
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    await logError("POST /api/userRoles/by-org", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }

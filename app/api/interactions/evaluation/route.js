@@ -80,8 +80,8 @@ export async function POST(request) {
   } catch (error) {
     logError(`POST /api/interactions/evaluation`, error);
     if (error instanceof RangeError)
-      return NextResponse.json({ message: error.message }, { status: 400 });
-    return NextResponse.json({ message: error.message }, { status: 500 });
+      return NextResponse.json({ message: "Invalid request" }, { status: 400 });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 

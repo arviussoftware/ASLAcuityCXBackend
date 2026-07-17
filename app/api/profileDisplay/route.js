@@ -9,8 +9,15 @@ export async function POST(req) {
     const encryptionKey =
       process.env.NEXT_PUBLIC_CLIENT_ENCRYPT_KEY ||
       process.env.NEXT_PUBLIC_ENCRYPTION_KEY ||
-      process.env.ENCRYPTION_KEY ||
-      "MyAppSecretKey2025";
+      process.env.ENCRYPTION_KEY;
+
+    if (!encryptionKey) {
+      console.error("ENCRYPTION_KEY environment variable is not set");
+      return NextResponse.json(
+        { message: "Server configuration error" },
+        { status: 500 }
+      );
+    }
 
     if (!userId) {
       return NextResponse.json(
@@ -27,7 +34,7 @@ export async function POST(req) {
       }
     );
 
-    console.log(JSON.stringify(profileResult, null, 2));
+    // Debug logging removed — avoid logging full profile (PII) to stdout
 
     if (
       !profileResult?.recordset ||
@@ -69,7 +76,7 @@ export async function POST(req) {
     console.error("Error in profileDisplay API:", error);
 
     return NextResponse.json(
-      { message: error.message },
+      { message: "Internal server error" },
       { status: 500 }
     );
   }

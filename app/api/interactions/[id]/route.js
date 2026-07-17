@@ -10,6 +10,7 @@ import {
 } from "@/lib/sql.js";
 import { logAudit } from "@/lib/auditLogger";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
+import { assertSafeTableName } from "@/lib/safeTableName";
 
 export const dynamic = "force-dynamic";
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -144,6 +145,7 @@ async function getInteractionDirect(interactionId) {
 
     for (const tableName of tables) {
       try {
+        assertSafeTableName(tableName);
         const hasOrgId = tableName === "TblMst_Metadata";
         const orgIdSelect = hasOrgId
           ? 'm."OrganizationID" AS "organizationId"'

@@ -9,6 +9,7 @@ import { MODULES, PRIVILEGES } from "@/lib/constants/privileges";
 import { Privilege } from "@/lib/models/privilege";
 import { checkUserPrivilege } from "@/lib/auth/privilegeChecker";
 import { isInvalid } from "@/lib/generic";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -93,7 +94,7 @@ export async function GET(request) {
 
     return response;
   } catch (error) {
-    console.log("Error occurred while processing GET request:", error);
+    await logError("GET /api/forms", error);
     return new Response(
       JSON.stringify({ success: false, message: "Internal server error" }),
       {
@@ -111,7 +112,7 @@ async function getforms() {
     const result = await executeStoredProcedure("usp_GetAllForms");
     return result;
   } catch (error) {
-    console.log("Error executing stored procedure:", error);
+    await logError("getforms", error);
     throw error;
   }
 }
@@ -139,7 +140,7 @@ async function setFormsModel(recordset) {
     );
     return forms;
   } catch (error) {
-    console.log("Error occurred while transforming forms model:", error);
+    await logError("setFormsModel", error);
     throw new Error("Failed to transform forms data.");
   }
 }

@@ -331,12 +331,7 @@ export async function POST(request) {
     );
   } catch (error) {
     await logError("POST /api/interactions", error);
-    console.error(
-      "[Exception] Unhandled error in POST /interactions:",
-      error.message,
-      error.stack,
-    );
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 

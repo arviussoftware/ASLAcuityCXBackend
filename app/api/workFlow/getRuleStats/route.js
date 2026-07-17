@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -76,9 +77,9 @@ export async function GET(request) {
       { status: statusCode >= 400 ? statusCode : 500 }
     );
   } catch (error) {
-    console.error("[getRuleStats]", error.message);
+    await logError("GET /api/workFlow/getRuleStats", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Internal server error" },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }
@@ -118,9 +119,9 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("[getRuleStats POST]", error.message);
+    await logError("POST /api/workFlow/getRuleStats", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Internal server error" },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }

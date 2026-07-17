@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -96,12 +97,11 @@ export async function POST(request) {
       data: result.recordset || [],
     });
   } catch (error) {
-    console.error("Error updating app settings:", error);
-
+    await logError("POST /api/workspace/updatesettings", error);
     return NextResponse.json(
       {
         success: false,
-        message: error.message,
+        message: "Internal server error",
       },
       { status: 500 },
     );

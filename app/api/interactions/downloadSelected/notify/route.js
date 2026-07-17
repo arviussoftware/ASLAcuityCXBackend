@@ -33,7 +33,7 @@ export async function POST(req) {
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Failed to send export notification email.",
+        message: "Failed to send export notification email.",
       },
       { status: 500 },
     );

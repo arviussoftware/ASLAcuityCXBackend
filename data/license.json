@@ -1,0 +1,64 @@
+{
+  "modules": [
+    {
+      "moduleId": 1,
+      "moduleName": "Dashboard",
+      "expiryDate": "2025-12-31"
+    },
+    {
+      "moduleId": 2,
+      "moduleName": "User Management",
+      "expiryDate": "2028-12-31"
+    },
+    {
+      "moduleId": 4,
+      "moduleName": "Agent Organization",
+      "expiryDate": "2025-12-31"
+    },
+    {
+      "moduleId": 5,
+      "moduleName": "Form Designer",
+      "expiryDate": "2025-12-31"
+    },
+    {
+      "moduleId": 6,
+      "moduleName": "Interaction",
+      "expiryDate": "2028-12-31"
+    },
+    {
+      "moduleId": 7,
+      "moduleName": "Role Management",
+      "expiryDate": "2028-12-31"
+    },
+    {
+      "moduleId": 8,
+      "moduleName": "Organization",
+      "expiryDate": "2028-12-31"
+    },
+    {
+      "moduleId": 9,
+      "moduleName": "Organization Form Mapping",
+      "expiryDate": "2025-12-31"
+    },
+    {
+      "moduleId": 10,
+      "moduleName": "Reports",
+      "expiryDate": "2028-12-31"
+    },
+    {
+      "moduleId": 11,
+      "moduleName": "Integration workspace",
+      "expiryDate": "2025-12-31"
+    },
+    {
+      "moduleId": 12,
+      "moduleName": "Security",
+      "expiryDate": "2025-12-31"
+    },
+    {
+      "moduleId": 13,
+      "moduleName": "Workspace",
+      "expiryDate": "2028-12-31"
+    }
+  ]
+}

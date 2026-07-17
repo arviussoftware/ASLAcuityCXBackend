@@ -1,6 +1,4 @@
 // app/api/users/resend-otp/route.js
-
-// app/api/users/resend-otp/route.js
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import nodemailer from "nodemailer";
@@ -26,8 +24,7 @@ export async function POST(req) {
   try {
     body = await req.json();
   } catch (err) {
-    await logError("POST /api/users/resend-otp - JSON parse", err); // ← ADD THIS
-    console.error("[resend-otp] Failed to parse JSON:", err);
+    await logError("POST /api/users/resend-otp - JSON parse", err);
     return NextResponse.json(
       { success: false, message: "Invalid JSON body" },
       { status: 400 },
@@ -51,10 +48,9 @@ export async function POST(req) {
   try {
     result = await executeStoredProcedure("usp_GenerateNewOtp", { email });
   } catch (err) {
-    await logError("POST /api/users/resend-otp - DB", err); // ← ADD THIS
-    console.error("[resend-otp] DB error:", err);
+    await logError("POST /api/users/resend-otp - DB", err);
     return NextResponse.json(
-      { success: false, message: "Database error: " + err.message },
+      { success: false, message: "Database error" },
       { status: 500 },
     );
   }
@@ -75,19 +71,17 @@ export async function POST(req) {
 
   const transporter = nodemailer.createTransport({
     host: process.env.SMTP_HOST,
-    port: parseInt(process.env.SMTP_PORT),
+    port: parseInt(process.env.SMTP_PORT, 10),
     secure: false,
     auth: {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    tls: {
-      rejectUnauthorized: false,
-    },
+    // TLS certificate validation enabled (rejectUnauthorized defaults to true)
   });
   const baseUrl = process.env.REACT_APP_BASE_URL;
   const verificationUrl = `${baseUrl}/OTP?email=${encodeURIComponent(email)}`;
-  console.log("verificationUrl is: ", verificationUrl);
+  
   const mailOptions = {
     from: `"Verify ASL AcuityCx" <${process.env.SMTP_USER}>`,
     to: email,
@@ -103,13 +97,12 @@ export async function POST(req) {
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    await transporter.sendMail(mailOptions);
     await logSuccess("POST /api/users/resend-otp", "OTP resent successfully.", {
       email,
     });
   } catch (err) {
-    await logError("POST /api/users/resend-otp - Email", err); // ← ADD THIS
-    console.error("[resend-otp] Failed to send email:", err);
+    await logError("POST /api/users/resend-otp - Email", err);
     return NextResponse.json(
       { success: false, message: "Failed to send OTP email." },
       { status: 500 },

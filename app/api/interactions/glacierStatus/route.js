@@ -8,13 +8,11 @@ import {
   writeRestoreRecord,
 } from "@/lib/glacierRestoreTracker";
 import { logError, logWarning } from "@/lib/errorLogger";
-import { connectToDatabase, executeStoredProcedure } from "@/lib/sql.js";
+import { executeStoredProcedure } from "@/lib/sql.js";
 
 export const dynamic = "force-dynamic";
 
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
-
-
 
 function verifyAuth(req) {
   const authHeader = req.headers.get("authorization") || "";
@@ -60,6 +58,7 @@ function buildTrackedStatusResponse({ interactionId, filePath, record }) {
     nextCheckAt: record?.NextCheckAt ?? record?.nextcheckat ?? null,
   };
 }
+
 async function getStatusForItem(item, skipS3 = false) {
   const interactionId = normalizeInteractionId(
     item?.interactionId ?? item?.id ?? item?.interaction_id,
@@ -94,13 +93,17 @@ async function getStatusForItem(item, skipS3 = false) {
 
   if (trackedResponse) {
     if (trackedResponse.status === "retrieving") {
-      const nextCheckStr = trackedRecord?.NextCheckAt ?? trackedRecord?.nextcheckat;
+      const nextCheckStr =
+        trackedRecord?.NextCheckAt ?? trackedRecord?.nextcheckat;
       const nextCheck = nextCheckStr ? new Date(nextCheckStr) : null;
       const now = new Date();
 
       if (!skipS3 && (!nextCheck || nextCheck < now)) {
         try {
-          const actualS3Status = await getObjectRestoreStatus({ filePath, fileSourceType });
+          const actualS3Status = await getObjectRestoreStatus({
+            filePath,
+            fileSourceType,
+          });
           if (actualS3Status && actualS3Status.status !== "retrieving") {
             await writeRestoreRecord({
               interactionId,
@@ -111,15 +114,22 @@ async function getStatusForItem(item, skipS3 = false) {
             trackedResponse.message = actualS3Status.message;
           } else {
             // Still retrieving: throttle the next check to protect S3 API costs
-            await executeStoredProcedure("usp_updateglacierrestorenextcheckat", {
-              interactionid: Number(interactionId),
-              payloadtype: "AUDIO",
-              status: "",
-              interval_minutes: 30,
-            });
+            await executeStoredProcedure(
+              "usp_updateglacierrestorenextcheckat",
+              {
+                interactionid: Number(interactionId),
+                payloadtype: "AUDIO",
+                status: "",
+                interval_minutes: 30,
+              },
+            );
           }
         } catch (err) {
-          console.error("Failed to dynamically check S3 restore status for item:", interactionId, err.message);
+          console.error(
+            "Failed to dynamically check S3 restore status for item:",
+            interactionId,
+            err.message,
+          );
         }
       }
     }
@@ -137,6 +147,28 @@ async function getStatusForItem(item, skipS3 = false) {
   };
 }
 
+// Small in-process concurrency limiter — avoids importing a dependency for
+// something this simple. Runs `worker` over `items` with at most `limit`
+// in flight at once, preserving each item's result at its original index.
+async function runWithConcurrency(items, limit, worker) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+
+  const runners = new Array(Math.min(limit, items.length))
+    .fill(null)
+    .map(async () => {
+      while (nextIndex < items.length) {
+        const currentIndex = nextIndex++;
+        results[currentIndex] = await worker(items[currentIndex], currentIndex);
+      }
+    });
+
+  await Promise.all(runners);
+  return results;
+}
+
+const GLACIER_RESTORE_CONCURRENCY = 10; // cap parallel S3 RestoreObject calls
+
 export async function POST(req) {
   try {
     if (!verifyAuth(req)) {
@@ -149,7 +181,10 @@ export async function POST(req) {
 
     const body = await req.json();
     const action = String(body?.action || "status").toLowerCase();
-    const createdBy = req.headers.get("loggedinuserid") || req.headers.get("loggedInUserId") || null;
+    const createdBy =
+      req.headers.get("loggedinuserid") ||
+      req.headers.get("loggedInUserId") ||
+      null;
 
     if (action === "restore") {
       const interactionId = normalizeInteractionId(
@@ -186,8 +221,12 @@ export async function POST(req) {
         return NextResponse.json({ results: [] });
       }
 
-      const results = await Promise.all(
-        items.slice(0, 100).map(async (item) => {
+      const boundedItems = items.slice(0, 100);
+
+      const results = await runWithConcurrency(
+        boundedItems,
+        GLACIER_RESTORE_CONCURRENCY,
+        async (item) => {
           const interactionId = normalizeInteractionId(
             item?.interactionId ?? item?.id ?? item?.interaction_id,
           );
@@ -222,7 +261,7 @@ export async function POST(req) {
               message: err.message || "Failed to start restore.",
             };
           }
-        }),
+        },
       );
 
       return NextResponse.json({ results });

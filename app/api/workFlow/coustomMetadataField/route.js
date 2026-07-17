@@ -76,9 +76,8 @@ export async function GET(request) {
 
   } catch (error) {
     await logError("GET /api/workFlow/coustomMetadataField", error);
-    console.error("API Error:", error);
     return NextResponse.json(
-      { success: false, message: error.message },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }

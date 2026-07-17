@@ -50,13 +50,12 @@ export async function GET(request) {
       },
     );
   } catch (error) {
-    console.error("Error occurred while processing GET request:", error);
-    logError("GET /api/roleManagement/privileges/[id]", error);
+    await logError("GET /api/roleManagement/privileges/[id]", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Internal server error",
+        message: "Internal server error",
       },
       { status: 500 },
     );
@@ -71,8 +70,7 @@ async function getModulePrivileges(moduleId) {
 
     return await executeStoredProcedure("usp_ModulePrevilege", inputParams);
   } catch (error) {
-    console.error("Error executing usp_ModulePrevilege:", error);
-    logError(
+    await logError(
       "roleManagement/privileges/[id]/route.js:getModulePrivileges",
       error,
     );
@@ -97,8 +95,7 @@ async function setPrivilegesModel(recordset) {
         ),
     );
   } catch (error) {
-    console.error("Error occurred while transforming privileges model:", error);
-    logError(
+    await logError(
       "roleManagement/privileges/[id]/route.js:setPrivilegesModel",
       error,
     );

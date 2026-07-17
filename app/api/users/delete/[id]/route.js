@@ -135,13 +135,13 @@ export async function POST(request, { params }) {
       // { status: result.output.statuscode }
     );
   } catch (error) {
-    await logError("POST /api/users/delete/[id]", error); // ← ADD THIS LINE
+    await logError("POST /api/users/delete/[id]", error);
     // Handle specific error types
     if (error instanceof RangeError) {
-      return NextResponse.json({ message: error.message }, { status: 400 });
+      return NextResponse.json({ message: "Invalid request" }, { status: 400 });
     }
     // General error handling
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 

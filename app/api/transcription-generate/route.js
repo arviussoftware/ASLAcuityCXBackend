@@ -22,6 +22,7 @@ import {
 } from "@aws-sdk/client-transcribe";
 import { getAWSCredentials } from "@/lib/connectionCredentials";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
+import { assertSafeTableName } from "@/lib/safeTableName";
 
 export const dynamic = "force-dynamic";
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -101,6 +102,7 @@ async function updateTranscriptionInDB(interactionId, fields) {
 
     for (const tableName of tables) {
       try {
+        assertSafeTableName(tableName);
         const result = await pool.query(
           `
           UPDATE public."${tableName}"

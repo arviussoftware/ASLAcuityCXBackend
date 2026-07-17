@@ -242,9 +242,7 @@ export async function POST(request) {
             user: process.env.SMTP_USER,
             pass: process.env.SMTP_PASS,
           },
-          tls: {
-            rejectUnauthorized: false,
-          },
+          // TLS certificate validation enabled (rejectUnauthorized defaults to true)
         });
         const baseUrl = process.env.REACT_APP_BASE_URL;
         const verificationUrl = `${baseUrl}/OTP?email=${encodeURIComponent(
@@ -310,12 +308,12 @@ export async function POST(request) {
       { status: statusCode },
     );
   } catch (error) {
-    await logError("POST /api/users/add", error); // ← ADD THIS LINE
+    await logError("POST /api/users/add", error);
     console.error("Unexpected server error during user creation:", error);
     return NextResponse.json(
       {
         success: false,
-        message: "Internal Server Error: " + error.message,
+        message: "Internal server error",
       },
       { status: 500 },
     );

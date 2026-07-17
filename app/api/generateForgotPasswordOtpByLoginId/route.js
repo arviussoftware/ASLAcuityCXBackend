@@ -41,7 +41,7 @@ export async function POST(request) {
       secure: false,
       requireTLS: true,
       auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
-      tls: { rejectUnauthorized: false },
+      // TLS certificate validation enabled (rejectUnauthorized defaults to true)
     });
 
     const baseUrl = process.env.REACT_APP_BASE_URL;

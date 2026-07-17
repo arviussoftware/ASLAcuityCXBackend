@@ -158,10 +158,9 @@ export async function POST(request) {
       statuscode: result.output.statuscode,
     });
   } catch (error) {
-    await logError("POST /api/users/delete/bulk", error); // ← ADD THIS
-    console.error("Bulk delete API error:", error);
+    await logError("POST /api/users/delete/bulk", error);
     return NextResponse.json(
-      { message: error.message || "Internal server error." },
+      { message: "Internal server error" },
       { status: 500 },
     );
   }

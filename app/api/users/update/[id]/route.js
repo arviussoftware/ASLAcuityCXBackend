@@ -299,9 +299,8 @@ export async function POST(request, { params }) {
     }
   } catch (error) {
     await logError("POST /api/users/update/[id]", error);
-    console.error("Internal Server Error:", error.message, error.stack);
     return NextResponse.json(
-      { message: `Internal Server Error: ${error.message}` },
+      { message: "Internal server error" },
       { status: 500 },
     );
   }

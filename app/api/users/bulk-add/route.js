@@ -23,14 +23,18 @@ import {
   sendVerificationEmail,
   validateUserInput,
 } from "@/lib/users/userCreation";
+import { assertSafeTableName } from "@/lib/safeTableName";
+
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // ADD THIS — allow up to 5 minutes for large bulk uploads
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
 const ENCRYPTION_KEY =
   process.env.ENCRYPTION_KEY ||
-  process.env.NEXT_PUBLIC_CLIENT_ENCRYPT_KEY ||
-  "MyAppSecretKey2025";
+  process.env.NEXT_PUBLIC_CLIENT_ENCRYPT_KEY;
+if (!ENCRYPTION_KEY) {
+  throw new Error("ENCRYPTION_KEY environment variable is not set");
+}
 const MAX_USERS_PER_ORG = 100;
 
 const normalizeIdList = (items, key) =>
@@ -526,7 +530,7 @@ export async function POST(request) {
     await logError("POST /api/users/bulk-add", error);
     console.error("Unexpected server error during bulk user creation:", error);
     return NextResponse.json(
-      { success: false, message: "Internal Server Error: " + error.message },
+      { success: false, message: "Internal server error" },
       { status: 500 },
     );
   }

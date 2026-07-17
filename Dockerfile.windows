@@ -1,0 +1,21 @@
+# Step 1: Build the app
+FROM node:20-windowsservercore-ltsc2022 AS builder
+WORKDIR C:\app
+COPY package*.json ./
+RUN npm ci --legacy-peer-deps
+COPY . .
+RUN npm run build
+
+# Step 2: Run the app
+FROM node:20-windowsservercore-ltsc2022 AS runner
+WORKDIR C:\app
+ENV NODE_ENV=production
+
+# Copy built standalone folder and static files
+COPY --from=builder C:\app\.next\standalone .\
+COPY --from=builder C:\app\.next\static .\.next\static
+
+EXPOSE 3000
+ENV PORT=3000
+
+CMD ["node", "server.js"]

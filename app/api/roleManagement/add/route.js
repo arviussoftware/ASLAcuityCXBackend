@@ -100,8 +100,7 @@ export async function POST(request) {
             newRoleData = queryResult.rows[0];
           }
         } catch (dbErr) {
-          console.error("Error fetching newly created role details:", dbErr);
-          logError("roleManagement/add/route.js:fetchNewRoleDetails", dbErr);
+          await logError("roleManagement/add/route.js:fetchNewRoleDetails", dbErr);
         }
       }
 
@@ -156,14 +155,12 @@ export async function POST(request) {
       { status: statusCode }
     );
   } catch (error) {
-    console.error("Create Role Error:", error);
-    logError("POST /api/roleManagement/add", error);
+    await logError("POST /api/roleManagement/add", error);
 
     return NextResponse.json(
       {
         success: false,
-        message:
-          error?.message || "Internal server error.",
+        message: "Internal server error.",
       },
       { status: 500 }
     );
@@ -184,8 +181,7 @@ async function CreateRole(newRole, Description, userId) {
       outputmsgWithStatusCodeParams
     );
   } catch (error) {
-    console.error("Error executing usp_InsertUserRole:", error);
-    logError("roleManagement/add/route.js:CreateRole", error);
+    await logError("roleManagement/add/route.js:CreateRole", error);
     throw error;
   }
 }

@@ -158,8 +158,8 @@ export async function POST(request, { params }) {
       { status: updateResult.output.statuscode },
     );
   } catch (error) {
-    await logError("POST /api/users/resetpassword/[id]", error); // ← add this
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    await logError("POST /api/users/resetpassword/[id]", error);
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 

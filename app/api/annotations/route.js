@@ -4,6 +4,7 @@ import { logAudit } from "@/lib/auditLogger";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
 import { checkUserPrivilege } from "@/lib/auth/privilegeChecker";
 import { MODULES, PRIVILEGES } from "@/lib/constants/privileges";
+import { assertSafeTableName } from "@/lib/safeTableName";
 
 export const dynamic = "force-dynamic";
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -328,6 +329,7 @@ export async function POST(request) {
       const tables = years.map((y) => `TblMst_Metadata_${y}`);
       for (const tableName of tables) {
         try {
+          assertSafeTableName(tableName);
           const m = await pool.query(
             `SELECT call_id FROM public."${tableName}" WHERE interaction_id = $1 LIMIT 1`,
             [iid],

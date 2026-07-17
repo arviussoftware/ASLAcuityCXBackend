@@ -97,7 +97,7 @@ export async function POST(request) {
     await logError("POST /api/users/verify-otp", error); // ← ADD THIS
     console.error("[verify-otp] Unexpected server error:", error);
     return NextResponse.json(
-      { success: false, message: "Internal server error: " + error.message },
+      { success: false, message: "Internal server error" },
       { status: 500 },
     );
   }

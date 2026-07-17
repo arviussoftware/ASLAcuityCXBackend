@@ -5,6 +5,7 @@
 import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/sql.js";
 import { logError } from "@/lib/errorLogger";
+import { assertSafeTableName } from "@/lib/safeTableName";
 
 export const dynamic = "force-dynamic";
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -29,6 +30,7 @@ export async function GET(request, { params }) {
 
     for (const tableName of tables) {
       try {
+        assertSafeTableName(tableName);
         const result = await pool.query(`
           SELECT
             transcriptionfilepath,

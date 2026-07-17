@@ -73,13 +73,12 @@ export async function GET(request, context) {
       }
     );
   } catch (error) {
-    console.error("savedOrgs error:", error);
-    logError("GET /api/roleManagement/savedOrgs/[roleid]", error);
+    await logError("GET /api/roleManagement/savedOrgs/[roleid]", error);
 
     return NextResponse.json(
       {
         success: false,
-        message: error.message,
+        message: "Internal server error.",
       },
       { status: 500 }
     );

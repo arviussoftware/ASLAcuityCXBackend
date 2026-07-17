@@ -1,6 +1,7 @@
 // app/api/timezone/route.js
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
 export const dynamic = "force-dynamic";
@@ -46,9 +47,9 @@ export async function GET(request) {
       data: timezone,
     });
   } catch (error) {
-    console.error("Error occurred while fetching timezones:", error);
+    await logError("GET /api/timezone", error);
     return NextResponse.json(
-      { success: false, message: error.message },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }

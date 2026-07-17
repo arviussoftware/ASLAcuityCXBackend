@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -62,9 +63,9 @@ export async function GET(request) {
       { status: statusCode >= 400 ? statusCode : 500 }
     );
   } catch (error) {
-    console.error("[getFailedTranscriptions]", error.message);
+    await logError("GET /api/workFlow/getFailedTranscriptions", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Internal server error" },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }

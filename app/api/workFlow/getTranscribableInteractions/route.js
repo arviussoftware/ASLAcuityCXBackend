@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
+import { isInvalid } from "@/lib/generic";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -73,9 +75,9 @@ export async function GET(request) {
       { status: statusCode >= 400 ? statusCode : 500 }
     );
   } catch (error) {
-    console.error("[getTranscribableInteractions]", error.message);
+    await logError("GET /api/workFlow/getTranscribableInteractions", error);
     return NextResponse.json(
-      { success: false, message: error.message || "Internal server error" },
+      { success: false, message: "Internal server error" },
       { status: 500 }
     );
   }

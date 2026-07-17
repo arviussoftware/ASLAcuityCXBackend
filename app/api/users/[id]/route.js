@@ -127,11 +127,11 @@ export async function GET(request, { params }) {
       { status: 200 },
     );
   } catch (error) {
-    await logError("GET /api/users/[id]", error); // ← ADD THIS
+    await logError("GET /api/users/[id]", error);
     if (error instanceof RangeError) {
-      return NextResponse.json({ message: error.message }, { status: 400 });
+      return NextResponse.json({ message: "Invalid request" }, { status: 400 });
     }
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 });
   }
 }
 

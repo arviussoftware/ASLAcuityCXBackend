@@ -51,11 +51,11 @@ api_test_interactions.mjs
 api_test_dashboard_workspace.mjs
 .vercel
 
-# License files
-license.json
-license.lic
+# # License files
+# license.json
+# license.lic
 
-# License files in project folders
-AcuityCXAPI/license.lic
-AcuityCXAPI/license.json
-AcuityCXAPI/data/license.json
+# # License files in project folders
+# AcuityCXAPI/license.lic
+# AcuityCXAPI/license.json
+# AcuityCXAPI/data/license.json

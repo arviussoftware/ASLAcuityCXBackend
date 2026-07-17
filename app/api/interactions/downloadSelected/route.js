@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import archiver from "archiver";
 import { Readable } from "stream";
 import fs from "fs";
+import os from "os";
 import path from "path";
 import { randomUUID } from "crypto";
 import { logAudit } from "@/lib/auditLogger";
@@ -24,17 +25,17 @@ import { sendExportNotificationEmail } from "@/lib/sendExportNotificationEmail";
 import {
   readRestoreRecord,
   writeRestoreRecord,
-  resolveSourceType as resolveGlacierSourceType,
   isGlacierRestoreRequiredError,
   getObjectRestoreStatus,
+  initiateObjectRestore,
 } from "@/lib/glacierRestoreTracker";
 
+export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 const execPromise = promisify(exec);
 const MAX_DOWNLOAD_RECORDINGS = Number(process.env.MAX_EXPORT_LIMIT || 2000);
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
-const BULK_DOWNLOAD_DIR =
-  process.env.BULK_DOWNLOAD_PATH || "C:\\interaction_download";
+const BULK_DOWNLOAD_DIR = path.join(os.tmpdir(), "acuitycx-bulk-downloads");
 
 const NUMERIC_TYPE_MAP = { 1: "network", 2: "local", 3: "aws-s3", 4: "gcp" };
 const knownSourceTypes = new Set([
@@ -73,7 +74,6 @@ function validateFilePath(filePath) {
     filePath.startsWith("https://")
   )
     return true;
-
   const normalized = path.normalize(filePath);
   if (normalized.includes("..")) return false;
   if (!path.isAbsolute(normalized) && !normalized.startsWith("\\\\"))
@@ -100,48 +100,42 @@ const sanitizeArchiveFileName = (value = "") =>
     .replace(/\.+$/g, "")
     .slice(0, 180) || "Interactions.zip";
 
-async function createLocalOrNetworkStream(fileLocation, sourceType, tag) {
+async function createLocalOrNetworkStream(fileLocation, sourceType) {
   if (sourceType === "network") {
     const directoryPath = fileLocation.split("\\");
-    const networkUserName = process.env.NETWORKNAME;
-    const networkPassword = process.env.NETWORKPASSWORD;
     const rootDir = `\\\\${directoryPath[2]}\\${directoryPath[3]}`;
-
     const { stdout: netUseOutput } = await execPromise("net use");
     if (netUseOutput.includes(rootDir)) {
       await execPromise(`net use ${rootDir} /delete`);
     }
     await execPromise(
-      `net use ${rootDir} /user:${networkUserName} ${networkPassword} /persistent:no`,
+      `net use ${rootDir} /user:${process.env.NETWORKNAME} ${process.env.NETWORKPASSWORD} /persistent:no`,
     );
   }
-
   if (!fs.existsSync(fileLocation)) {
     throw new Error(`File not found: ${fileLocation}`);
   }
   return fs.createReadStream(fileLocation);
 }
 
-async function createS3Stream(s3, fileLocation, creds, tag) {
+async function createS3Stream(s3, fileLocation, creds) {
   let bucket = creds.BUCKET;
   let key = fileLocation;
-
   if (fileLocation.startsWith("s3://")) {
     const withoutPrefix = fileLocation.slice(5);
     const slashIdx = withoutPrefix.indexOf("/");
     bucket = withoutPrefix.slice(0, slashIdx);
     key = withoutPrefix.slice(slashIdx + 1);
   }
-
-  const command = new GetObjectCommand({ Bucket: bucket, Key: key });
-  const response = await s3.send(command);
+  const response = await s3.send(
+    new GetObjectCommand({ Bucket: bucket, Key: key }),
+  );
   return response.Body;
 }
 
-async function createGcsStream(gcs, fileLocation, tag) {
+async function createGcsStream(gcs, fileLocation) {
   let bucketName = process.env.GCP_BUCKET;
   let filePath = fileLocation;
-
   if (fileLocation.startsWith("gs://")) {
     const withoutPrefix = fileLocation.slice(5);
     const slashIdx = withoutPrefix.indexOf("/");
@@ -156,11 +150,10 @@ async function createGcsStream(gcs, fileLocation, tag) {
     bucketName = parts[0];
     filePath = parts.slice(1).join("/");
   }
-
   return gcs.bucket(bucketName).file(filePath).createReadStream();
 }
 
-async function createPublicUrlStream(fileLocation, tag) {
+async function createPublicUrlStream(fileLocation) {
   const response = await fetch(fileLocation);
   if (!response.ok || !response.body) {
     throw new Error(`Failed to fetch public URL: ${response.status}`);
@@ -168,10 +161,10 @@ async function createPublicUrlStream(fileLocation, tag) {
   return Readable.fromWeb(response.body);
 }
 
-const streamToBuffer = (stream, tag) =>
+const streamToBuffer = (stream) =>
   new Promise((resolve, reject) => {
     const chunks = [];
-    stream.on("data", (chunk) => chunks.push(chunk));
+    stream.on("data", (c) => chunks.push(c));
     stream.on("end", () => resolve(Buffer.concat(chunks)));
     stream.on("error", reject);
   });
@@ -191,12 +184,9 @@ export async function POST(req) {
     const body = await req.json();
     const interactions = Array.isArray(body.interactionIds)
       ? body.interactionIds
-      : Array.isArray(body.interactions)
-        ? body.interactions
-        : [];
+      : [];
     const archiveFileName = sanitizeArchiveFileName(body.archiveFileName);
 
-    // const downloadInteractions = interactions.slice(0, MAX_DOWNLOAD_RECORDINGS);
     if (interactions.length > MAX_DOWNLOAD_RECORDINGS) {
       return new Response(
         `Too many recordings requested (${interactions.length}). Please narrow your date range or selection so that at most ${MAX_DOWNLOAD_RECORDINGS} calls are included, then try again.`,
@@ -204,18 +194,16 @@ export async function POST(req) {
       );
     }
 
-    const downloadInteractions = interactions;
-    const downloadableInteractions = downloadInteractions.filter(
-      (interaction) =>
-        interaction &&
-        typeof interaction === "object" &&
-        typeof interaction.fileLocation === "string" &&
-        interaction.fileLocation.trim().length > 0,
+    const downloadableInteractions = interactions.filter(
+      (i) =>
+        i &&
+        typeof i === "object" &&
+        typeof i.fileLocation === "string" &&
+        i.fileLocation.trim(),
     );
 
-    if (!downloadInteractions.length) {
+    if (!interactions.length)
       return new Response("No interactions", { status: 400 });
-    }
     if (!downloadableInteractions.length) {
       return new Response("Selected interactions do not include file paths.", {
         status: 400,
@@ -227,20 +215,17 @@ export async function POST(req) {
       creds.AWS_ACCESS_KEY_ID ||
       creds.Amazon_ACCESS_KEY_ID ||
       process.env.AWS_ACCESS_KEY_ID ||
-      process.env.Amazon_ACCESS_KEY_ID ||
       "";
     const awsSecretAccessKey =
       creds.AWS_SECRET_ACCESS_KEY ||
       creds.Amazon_SECRET_ACCESS_KEY ||
       process.env.AWS_SECRET_ACCESS_KEY ||
-      process.env.Amazon_SECRET_ACCESS_KEY ||
       "";
     const awsRegion = creds.REGION || process.env.REGION || "";
 
     const hasS3Files = downloadableInteractions.some(
       (i) => resolveSourceType(i.fileSourceType, i.fileLocation) === "aws-s3",
     );
-
     if (hasS3Files && (!awsAccessKeyId || !awsSecretAccessKey)) {
       return new Response(
         "Storage credentials for S3 recordings are not configured correctly. Contact admin.",
@@ -262,8 +247,6 @@ export async function POST(req) {
       downloadType,
     });
 
-    // Fire-and-forget — the response below returns immediately, the actual
-    // archive build happens after, decoupled from this request's lifetime.
     runBulkDownloadJob({
       jobId,
       tagBase,
@@ -298,8 +281,11 @@ export async function POST(req) {
     return NextResponse.json({ jobId }, { status: 202 });
   } catch (error) {
     console.error(`${tagBase} UNHANDLED error starting job:`, error);
-    logError("POST /api/interactions/downloadSelected", error);
-    return new Response("Internal Server Error", { status: 500 });
+    await logError("POST /api/interactions/downloadSelected", error); // add await
+    return new Response(
+      `Internal Server Error: ${error?.message || String(error)}`, // temporarily surface it
+      { status: 500 },
+    );
   }
 }
 
@@ -321,7 +307,6 @@ async function runBulkDownloadJob({
 }) {
   fs.mkdirSync(BULK_DOWNLOAD_DIR, { recursive: true });
   const diskStreamPath = path.join(BULK_DOWNLOAD_DIR, archiveFileName);
-  console.log(`${tagBase} building zip at: ${diskStreamPath}`);
 
   const archive = archiver("zip", { zlib: { level: 0 } });
   const diskStream = fs.createWriteStream(diskStreamPath);
@@ -384,9 +369,6 @@ async function runBulkDownloadJob({
     const safeCallId = callId || "unknown";
 
     try {
-      // Cheap pre-check: if our own restore-tracking table already says this
-      // S3 object hasn't finished coming back from Glacier, skip it without
-      // spending an S3 GetObject call that we know will fail.
       if (resolvedSourceType === "aws-s3" && interactionId) {
         const record = await readRestoreRecord({
           interactionId,
@@ -397,31 +379,49 @@ async function runBulkDownloadJob({
         ).toUpperCase();
 
         if (trackedStatus && trackedStatus !== "RETRIEVED") {
-          // If the database says retrieval is in progress, check S3 dynamically in case it finished
-          if (trackedStatus === "IN_PROGRESS" || trackedStatus === "INITIATED") {
+          if (
+            trackedStatus === "IN_PROGRESS" ||
+            trackedStatus === "INITIATED"
+          ) {
             try {
               const actualS3Status = await getObjectRestoreStatus({
                 filePath: fileLocation,
                 fileSourceType: "aws-s3",
               });
-              if (actualS3Status && actualS3Status.status === "retrieved") {
+              if (actualS3Status?.status === "retrieved") {
                 await writeRestoreRecord({
                   interactionId,
                   filePath: fileLocation,
                   status: "retrieved",
                 });
-                console.log(`${tag} Auto-healed: S3 Glacier restore is complete. Continuing download...`);
                 trackedStatus = "RETRIEVED";
               }
             } catch (err) {
-              console.error(`${tag} Failed to check actual S3 restore status for interaction: ${interactionId}`, err.message);
+              console.error(
+                `${tag} Failed to check S3 restore status:`,
+                err.message,
+              );
             }
           }
-
           if (trackedStatus !== "RETRIEVED") {
+            if (trackedStatus !== "IN_PROGRESS" && trackedStatus !== "INITIATED") {
+              try {
+                await initiateObjectRestore({
+                  interactionId,
+                  filePath: fileLocation,
+                  fileSourceType: "aws-s3",
+                  createdBy: loggedInUserId,
+                });
+              } catch (restoreErr) {
+                await logWarning(
+                  "POST /api/interactions/downloadSelected",
+                  `Failed to initiate restore for ${safeCallId}.`,
+                  { error: restoreErr?.message || String(restoreErr) },
+                );
+              }
+            }
             notRetrievedCount++;
             notRetrievedCallIds.push(safeCallId);
-            console.log(`${tag} SKIPPED — Glacier status is "${trackedStatus}"`);
             return;
           }
         }
@@ -429,16 +429,11 @@ async function runBulkDownloadJob({
 
       let fileStream;
       if (resolvedSourceType === "aws-s3") {
-        fileStream = await createS3Stream(
-          getS3Client(),
-          fileLocation,
-          creds,
-          tag,
-        );
+        fileStream = await createS3Stream(getS3Client(), fileLocation, creds);
       } else if (resolvedSourceType === "gcp") {
-        fileStream = await createGcsStream(getGcsClient(), fileLocation, tag);
+        fileStream = await createGcsStream(getGcsClient(), fileLocation);
       } else if (resolvedSourceType === "public-url") {
-        fileStream = await createPublicUrlStream(fileLocation, tag);
+        fileStream = await createPublicUrlStream(fileLocation);
       } else {
         if (!validateFilePath(fileLocation)) {
           failedCount++;
@@ -448,11 +443,10 @@ async function runBulkDownloadJob({
         fileStream = await createLocalOrNetworkStream(
           fileLocation,
           resolvedSourceType,
-          tag,
         );
       }
 
-      const fileBuffer = await streamToBuffer(fileStream, tag);
+      const fileBuffer = await streamToBuffer(fileStream);
       if (!fileBuffer || fileBuffer.length === 0) {
         failedCount++;
         failedCallIds.push(safeCallId);
@@ -477,19 +471,27 @@ async function runBulkDownloadJob({
       }
     } catch (err) {
       if (isGlacierRestoreRequiredError(err)) {
-        // DB said "retrieved" (or had no record) but S3 disagrees — trust S3.
+        if (interactionId && resolvedSourceType === "aws-s3") {
+          try {
+            await initiateObjectRestore({
+              interactionId,
+              filePath: fileLocation,
+              fileSourceType: "aws-s3",
+              createdBy: loggedInUserId,
+            });
+          } catch (restoreErr) {
+            await logWarning(
+              "POST /api/interactions/downloadSelected",
+              `Failed to initiate restore for ${safeCallId}.`,
+              { error: restoreErr?.message || String(restoreErr) },
+            );
+          }
+        }
         notRetrievedCount++;
         notRetrievedCallIds.push(safeCallId);
-        console.warn(
-          `${tag} not yet restored from Glacier (caught at S3 call)`,
-        );
       } else {
         failedCount++;
         failedCallIds.push(safeCallId);
-        console.error(
-          `${tag} FAILED (${resolvedSourceType}):`,
-          err?.message || err,
-        );
         logWarning(
           "POST /api/interactions/downloadSelected",
           `Skipping failed file: ${safeCallId} (${resolvedSourceType})`,
@@ -507,62 +509,34 @@ async function runBulkDownloadJob({
 
   const MAX_CONCURRENT = 5;
   for (let i = 0; i < downloadableInteractions.length; i += MAX_CONCURRENT) {
-    if (isCancelRequested(jobId)) {
-      console.log(
-        `${tagBase} cancellation requested — stopping before next batch`,
-      );
-      break;
-    }
-
+    if (isCancelRequested(jobId)) break;
     const chunk = downloadableInteractions.slice(i, i + MAX_CONCURRENT);
     await Promise.all(
       chunk.map((interaction, idx) => appendFile(interaction, i + idx)),
     );
   }
 
-  console.log(`${tagBase} appended=${appendedCount} failed=${failedCount}`);
-  if (failedCount > 0)
-    console.warn(`${tagBase} failed callIds:`, failedCallIds);
-
   if (isCancelRequested(jobId)) {
     if (appendedCount === 0) {
-      // Nothing got appended yet — nothing worth keeping, clean up as before.
       try {
         archive.unpipe(diskStream);
         archive.destroy?.();
       } catch {}
-
       await new Promise((resolve) => {
         if (diskStream.destroyed) return resolve();
         diskStream.once("close", resolve);
         diskStream.destroy();
       });
-
       try {
         await fs.promises.unlink(diskStreamPath);
-      } catch (err) {
-        console.warn(`${tagBase} failed to remove partial zip:`, err.message);
-      }
-
-      console.log(`${tagBase} job cancelled by user (processed=0)`);
+      } catch {}
       cancelJob(jobId, { processed: 0, failed: failedCount });
       return;
     }
 
-    // Finalize so the zip's central directory actually gets written — this is
-    // what makes the file openable. Just "not deleting" without finalizing
-    // would still leave a corrupt zip.
-    console.log(
-      `${tagBase} cancellation requested — finalizing partial zip with ${appendedCount} file(s)`,
-    );
-
     await archive.finalize();
     await diskStreamFinished;
-
     const fileStats = fs.statSync(diskStreamPath);
-    console.log(
-      `${tagBase} job cancelled — partial zip kept: ${diskStreamPath} (${fileStats.size} bytes, processed=${appendedCount})`,
-    );
 
     if (loggedInUserId) {
       await logAudit({
@@ -579,25 +553,62 @@ async function runBulkDownloadJob({
       fileSizeBytes: fileStats.size,
       filePath: diskStreamPath,
     });
-
     return;
   }
 
   if (appendedCount === 0) {
+    updateJob(jobId, {
+      processed: 0,
+      failed: failedCount,
+      notRetrieved: notRetrievedCount,
+    });
+
+    if (notRetrievedCount > 0) {
+      try {
+        await sendExportNotificationEmail({
+          userEmail,
+          userName,
+          downloadCount: 0,
+          notRetrievedCount,
+          dateRangeLabel,
+          archiveFileName,
+          totalMatching,
+          downloadType,
+          notificationType: "restoration",
+        });
+      } catch (err) {
+        console.error(`${tagBase} failed to send restoration email:`, err);
+        await logError("downloadSelected -> sendExportNotificationEmail", err);
+      }
+    }
+
+    try {
+      archive.unpipe(diskStream);
+      archive.destroy?.();
+    } catch {}
+    await new Promise((resolve) => {
+      if (diskStream.destroyed) return resolve();
+      diskStream.once("close", resolve);
+      diskStream.destroy();
+    });
+    try {
+      await fs.promises.unlink(diskStreamPath);
+    } catch {}
+
     failJob(
       jobId,
-      new Error("None of the selected recordings could be retrieved."),
+      new Error(
+        notRetrievedCount > 0
+          ? "Selected recordings are under restoration. Please try again after 12 to 48 hours."
+          : "None of the selected recordings could be retrieved.",
+      ),
     );
     return;
   }
 
   await archive.finalize();
   await diskStreamFinished;
-
   const fileStats = fs.statSync(diskStreamPath);
-  console.log(
-    `${tagBase} zip fully written to disk: ${diskStreamPath} (${fileStats.size} bytes)`,
-  );
 
   if (loggedInUserId) {
     await logAudit({
@@ -634,11 +645,11 @@ async function runBulkDownloadJob({
       userName,
       downloadCount: appendedCount,
       notRetrievedCount,
-      capped: totalMatching > MAX_DOWNLOAD_RECORDINGS,
       dateRangeLabel,
       archiveFileName,
       totalMatching,
       downloadType,
+      notificationType: "downloaded",
     });
   } catch (err) {
     console.error(`${tagBase} failed to send notification email:`, err);

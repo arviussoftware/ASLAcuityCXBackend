@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { isInvalid } from "@/lib/generic";
+import { logError } from "@/lib/errorLogger";
 
 export const dynamic = "force-dynamic";
 
@@ -124,7 +125,7 @@ export async function GET(request) {
       updatedAt: row?.UpdatedAt ?? null,
     });
   } catch (error) {
-    console.error("GET /api/user-table-preferences error:", error);
+    await logError("GET /api/user-table-preferences", error);
 
     if (
       error.message?.includes("does not exist") ||
@@ -143,7 +144,7 @@ export async function GET(request) {
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Failed to fetch preference.",
+        message: "Failed to fetch preference.",
       },
       { status: 500 },
     );
@@ -202,7 +203,7 @@ export async function POST(request) {
       message: "Preference saved successfully.",
     });
   } catch (error) {
-    console.error("POST /api/user-table-preferences error:", error);
+    await logError("POST /api/user-table-preferences", error);
 
     if (
       error.message?.includes("does not exist") ||
@@ -222,7 +223,7 @@ export async function POST(request) {
     return NextResponse.json(
       {
         success: false,
-        message: error.message || "Failed to save preference.",
+        message: "Failed to save preference.",
       },
       { status: 500 },
     );
