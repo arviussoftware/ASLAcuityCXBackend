@@ -645,15 +645,20 @@ async function signedProxyRequest(payload) {
     import("@aws-sdk/credential-provider-node"),
   ]);
 
-  const accessKeyId =
+  const { decryptEnvKey } = await import("./lib/connectionCredentials.js");
+
+  const rawAccessKeyId =
     process.env.AWS_ACCESS_KEY_ID || process.env.Amazon_ACCESS_KEY_ID;
-  const secretAccessKey =
+  const rawSecretAccessKey =
     process.env.AWS_SECRET_ACCESS_KEY || process.env.Amazon_SECRET_ACCESS_KEY;
+
+  const accessKeyId = decryptEnvKey(rawAccessKeyId);
+  const secretAccessKey = decryptEnvKey(rawSecretAccessKey);
   const sessionToken =
     process.env.AWS_SESSION_TOKEN || process.env.Amazon_SESSION_TOKEN;
 
   let credentials;
-  if (accessKeyId && secretAccessKey) {
+  if (accessKeyId && secretAccessKey && !accessKeyId.includes("XXX")) {
     credentials = {
       accessKeyId,
       secretAccessKey,

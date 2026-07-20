@@ -153,13 +153,18 @@ export async function GET(req) {
 
 async function getAWSTranscription(fullFilePath, actionType) {
   const creds = await getAWSCredentials();
-  const s3 = new S3Client({
+  const s3Config = {
     region: creds.REGION,
-    credentials: {
-      accessKeyId: creds.AWS_ACCESS_KEY_ID,
-      secretAccessKey: creds.AWS_SECRET_ACCESS_KEY,
-    },
-  });
+  };
+  const accessKeyId = creds.AWS_ACCESS_KEY_ID || creds.Amazon_ACCESS_KEY_ID;
+  const secretAccessKey = creds.AWS_SECRET_ACCESS_KEY || creds.Amazon_SECRET_ACCESS_KEY;
+  if (accessKeyId && secretAccessKey && !accessKeyId.includes("XXX")) {
+    s3Config.credentials = {
+      accessKeyId,
+      secretAccessKey,
+    };
+  }
+  const s3 = new S3Client(s3Config);
 
   // Parse s3://bucket/key format
   let bucket = creds.BUCKET;

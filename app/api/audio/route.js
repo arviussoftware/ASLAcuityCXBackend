@@ -21,6 +21,21 @@ import { writeRestoreRecord } from "@/lib/glacierRestoreTracker";
 
 const execFilePromise = promisify(execFile);
 
+function createS3Client(creds) {
+  const config = {
+    region: creds.REGION,
+  };
+  const accessKeyId = creds.AWS_ACCESS_KEY_ID || creds.Amazon_ACCESS_KEY_ID;
+  const secretAccessKey = creds.AWS_SECRET_ACCESS_KEY || creds.Amazon_SECRET_ACCESS_KEY;
+  if (accessKeyId && secretAccessKey && !accessKeyId.includes("XXX")) {
+    config.credentials = {
+      accessKeyId,
+      secretAccessKey,
+    };
+  }
+  return new S3Client(config);
+}
+
 function getMimeType(filePath) {
   if (!filePath) return "audio/mpeg";
   const ext = path.extname(filePath).toLowerCase();
@@ -161,13 +176,7 @@ export async function HEAD(request) {
         bucket = wp.slice(0, si);
         key    = wp.slice(si + 1);
       }
-      const s3Client = new S3Client({
-        region: creds.REGION,
-        credentials: {
-          accessKeyId: creds.AWS_ACCESS_KEY_ID,
-          secretAccessKey: creds.AWS_SECRET_ACCESS_KEY,
-        },
-      });
+      const s3Client = createS3Client(creds);
       const command = new HeadObjectCommand({ Bucket: bucket, Key: key });
       const head = await s3Client.send(command);
       return new Response(null, {
@@ -268,13 +277,7 @@ export async function GET(request) {
             bucket = wp.slice(0, si);
             key    = wp.slice(si + 1);
           }
-          const s3Client = new S3Client({
-            region: creds.REGION,
-            credentials: {
-              accessKeyId: creds.AWS_ACCESS_KEY_ID,
-              secretAccessKey: creds.AWS_SECRET_ACCESS_KEY,
-            },
-          });
+          const s3Client = createS3Client(creds);
           const command = new RestoreObjectCommand({
             Bucket: bucket,
             Key: key,
@@ -307,13 +310,7 @@ export async function GET(request) {
           bucket = wp.slice(0, si);
           key    = wp.slice(si + 1);
         }
-        const s3Client = new S3Client({
-          region: creds.REGION,
-          credentials: {
-            accessKeyId: creds.AWS_ACCESS_KEY_ID,
-            secretAccessKey: creds.AWS_SECRET_ACCESS_KEY,
-          },
-        });
+        const s3Client = createS3Client(creds);
         const headCmd = new HeadObjectCommand({ Bucket: bucket, Key: key });
         const head = await s3Client.send(headCmd);
 
@@ -413,13 +410,7 @@ async function getS3PresignedUrl(fullFilePath) {
     key    = withoutPrefix.slice(slashIdx + 1);
   }
 
-  const s3Client = new S3Client({
-    region: creds.REGION,
-    credentials: {
-      accessKeyId: creds.AWS_ACCESS_KEY_ID,
-      secretAccessKey: creds.AWS_SECRET_ACCESS_KEY,
-    },
-  });
+  const s3Client = createS3Client(creds);
 
   const command = new GetObjectCommand({
     Bucket: bucket,

@@ -215,10 +215,13 @@ export async function POST(req) {
 
     const getS3Client = () => {
       if (!s3) {
-        s3 = new S3Client({
+        const s3Config = {
           region: creds.REGION || process.env.REGION || "",
-          credentials: { accessKeyId: awsAccessKeyId, secretAccessKey: awsSecretAccessKey },
-        });
+        };
+        if (awsAccessKeyId && awsSecretAccessKey && !awsAccessKeyId.includes("XXX")) {
+          s3Config.credentials = { accessKeyId: awsAccessKeyId, secretAccessKey: awsSecretAccessKey };
+        }
+        s3 = new S3Client(s3Config);
       }
       return s3;
     };

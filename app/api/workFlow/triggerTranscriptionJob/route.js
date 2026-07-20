@@ -19,8 +19,23 @@ import {
   StartTranscriptionJobCommand,
   GetTranscriptionJobCommand,
 } from "@aws-sdk/client-transcribe";
-import { getAWSCredentials } from "@/lib/connectionCredentials";
+import { getAWSCredentials, decryptEnvKey } from "@/lib/connectionCredentials";
 import { logError } from "@/lib/errorLogger";
+
+function getAWSConfig(creds) {
+  const config = {
+    region: creds.REGION,
+  };
+  const accessKeyId = creds.AWS_ACCESS_KEY_ID || creds.Amazon_ACCESS_KEY_ID;
+  const secretAccessKey = creds.AWS_SECRET_ACCESS_KEY || creds.Amazon_SECRET_ACCESS_KEY;
+  if (accessKeyId && secretAccessKey && !accessKeyId.includes("XXX")) {
+    config.credentials = {
+      accessKeyId,
+      secretAccessKey,
+    };
+  }
+  return config;
+}
 
 export const dynamic = "force-dynamic";
 const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
@@ -596,13 +611,7 @@ async function fetchAudioBuffer(filePath, sourceType, creds) {
       bucket = without.slice(0, idx);
       key = without.slice(idx + 1);
     }
-    const s3Client = new S3Client({
-      region: creds.REGION,
-      credentials: {
-        accessKeyId: creds.Amazon_ACCESS_KEY_ID,
-        secretAccessKey: creds.Amazon_SECRET_ACCESS_KEY,
-      },
-    });
+    const s3Client = new S3Client(getAWSConfig(creds));
     const command = new GetObjectCommand({ Bucket: bucket, Key: key });
     const obj = await s3Client.send(command);
     const streamToBuffer = async (stream) => {
@@ -1288,13 +1297,7 @@ async function callAWSTranscribe(
   const mediaFmt = fmtMap[rawExt] || "wav";
   const key = `temp-transcribe/${jobName}.${mediaFmt}`;
 
-  const awsConfig = {
-    region: creds.REGION,
-    credentials: {
-      accessKeyId: creds.Amazon_ACCESS_KEY_ID,
-      secretAccessKey: creds.Amazon_SECRET_ACCESS_KEY,
-    },
-  };
+  const awsConfig = getAWSConfig(creds);
 
   const s3Client = new S3Client(awsConfig);
   const transcribeClient = new TranscribeClient(awsConfig);
@@ -1447,13 +1450,7 @@ async function saveTranscription(savePath, transcriptionJson, creds) {
     const idx = without.indexOf("/");
     const bucket = without.slice(0, idx);
     const key = without.slice(idx + 1);
-    const s3Client = new S3Client({
-      region: creds.REGION,
-      credentials: {
-        accessKeyId: creds.Amazon_ACCESS_KEY_ID,
-        secretAccessKey: creds.Amazon_SECRET_ACCESS_KEY,
-      },
-    });
+    const s3Client = new S3Client(getAWSConfig(creds));
     await s3Client.send(
       new PutObjectCommand({
         Bucket: bucket,

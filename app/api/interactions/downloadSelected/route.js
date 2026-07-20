@@ -223,15 +223,7 @@ export async function POST(req) {
       "";
     const awsRegion = creds.REGION || process.env.REGION || "";
 
-    const hasS3Files = downloadableInteractions.some(
-      (i) => resolveSourceType(i.fileSourceType, i.fileLocation) === "aws-s3",
-    );
-    if (hasS3Files && (!awsAccessKeyId || !awsSecretAccessKey)) {
-      return new Response(
-        "Storage credentials for S3 recordings are not configured correctly. Contact admin.",
-        { status: 500 },
-      );
-    }
+
 
     const jobId = randomUUID();
     const dateRangeLabel = body.dateRangeLabel || "";
@@ -324,13 +316,13 @@ async function runBulkDownloadJob({
   let gcs = null;
   const getS3Client = () => {
     if (!s3) {
-      s3 = new S3Client({
+      const s3Config = {
         region: awsRegion,
-        credentials: {
-          accessKeyId: awsAccessKeyId,
-          secretAccessKey: awsSecretAccessKey,
-        },
-      });
+      };
+      if (awsAccessKeyId && awsSecretAccessKey && !awsAccessKeyId.includes("XXX")) {
+        s3Config.credentials = { accessKeyId: awsAccessKeyId, secretAccessKey: awsSecretAccessKey };
+      }
+      s3 = new S3Client(s3Config);
     }
     return s3;
   };

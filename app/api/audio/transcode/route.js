@@ -120,13 +120,18 @@ async function resolveSourceUrl(filePath, fileSourceType) {
       key = without.slice(slash + 1);
     }
 
-    const s3 = new S3Client({
+    const s3Config = {
       region: creds.REGION,
-      credentials: {
-        accessKeyId: creds.AWS_ACCESS_KEY_ID,
-        secretAccessKey: creds.AWS_SECRET_ACCESS_KEY,
-      },
-    });
+    };
+    const accessKeyId = creds.AWS_ACCESS_KEY_ID || creds.Amazon_ACCESS_KEY_ID;
+    const secretAccessKey = creds.AWS_SECRET_ACCESS_KEY || creds.Amazon_SECRET_ACCESS_KEY;
+    if (accessKeyId && secretAccessKey && !accessKeyId.includes("XXX")) {
+      s3Config.credentials = {
+        accessKeyId,
+        secretAccessKey,
+      };
+    }
+    const s3 = new S3Client(s3Config);
 
     return await getSignedUrl(s3, new GetObjectCommand({ Bucket: bucket, Key: key }), { expiresIn: 3600 }); // 1 hour
   }
