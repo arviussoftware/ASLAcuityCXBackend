@@ -1,4 +1,3 @@
-// app/api/workFlow/organizationDDLByInstance/route.js
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { logError } from "@/lib/errorLogger";
@@ -13,8 +12,11 @@ export async function GET(request) {
 
     if (!instanceId || !platformId) {
       return NextResponse.json(
-        { message: "instanceId and platformId are required", organizationList: [] },
-        { status: 400 }
+        {
+          message: "instanceId and platformId are required",
+          organizationList: [],
+        },
+        { status: 400 },
       );
     }
 
@@ -23,19 +25,33 @@ export async function GET(request) {
       PlatformId: Number(platformId),
     };
 
-    const result = await executeStoredProcedure("usp_GetOrganizationsByInstance", params);
+    const result = await executeStoredProcedure(
+      "usp_GetOrganizationsByInstance",
+      params,
+      [{ name: "OutputMsg" }, { name: "StatusCode" }],
+    );
 
+    const output = result.output || {};
+    const statusCode = Number(output.StatusCode ?? output.statuscode ?? 200);
+    const outputMsg = output.OutputMsg ?? output.outputmsg ?? "Success";
     const orgs = result.recordsets?.[0] || result.recordset || [];
+
+    if (statusCode !== 200) {
+      return NextResponse.json(
+        { message: outputMsg, organizationList: [] },
+        { status: statusCode >= 400 ? statusCode : 500 },
+      );
+    }
 
     const organizationList = buildOrganizationTree(orgs);
 
     const response = NextResponse.json(
-      { message: "Success", organizationList },
-      { status: 200 }
+      { message: outputMsg, organizationList },
+      { status: 200 },
     );
     response.headers.set(
       "Cache-Control",
-      "no-store, no-cache, must-revalidate, proxy-revalidate"
+      "no-store, no-cache, must-revalidate, proxy-revalidate",
     );
     return response;
   } catch (error) {
@@ -47,21 +63,25 @@ export async function GET(request) {
         error: error.message,
         organizationList: [],
       },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 function buildOrganizationTree(organizations) {
+  // unchanged — already reads "OrgId"/"OrgName" correctly, matching the SP's quoted output columns
   const map = new Map();
   const roots = [];
-
   organizations.forEach((org) => {
     const orgId = org.OrgId ?? org.orgId ?? org.OrganizationId ?? org.id;
-    const orgName = org.OrgName ?? org.org_name ?? org.OrganizationName ?? org.Name ?? org.label;
+    const orgName =
+      org.OrgName ??
+      org.org_name ??
+      org.OrganizationName ??
+      org.Name ??
+      org.label;
     const parentId = org.ParentId ?? org.parentId ?? org.parent_id;
     const isActive = org.IsActive ?? org.isActive ?? true;
-
     if (!orgId || !orgName) return;
     map.set(orgId, {
       id: orgId,
@@ -71,7 +91,6 @@ function buildOrganizationTree(organizations) {
       children: [],
     });
   });
-
   organizations.forEach((org) => {
     const orgId = org.OrgId ?? org.orgId ?? org.OrganizationId ?? org.id;
     const parentId = org.ParentId ?? org.parentId ?? org.parent_id;
@@ -80,6 +99,5 @@ function buildOrganizationTree(organizations) {
     if (!parentId || parentId === orgId || !map.has(parentId)) roots.push(node);
     else map.get(parentId).children.push(node);
   });
-
   return roots;
 }

@@ -13,6 +13,22 @@ import {
 } from "@/lib/licenseService";
 import { isInvalid } from "@/lib/generic";
 import CryptoJS from "crypto-js";
+import { isRateLimited } from "@/lib/rateLimit";
+import { z } from "zod";
+
+const loginSchema = z.object({
+  username: z.string().max(150, "Username is too long").optional(),
+  password: z.string().max(100, "Password is too long").optional(),
+  email: z.string().max(255, "Email is too long").optional(),
+  authType: z.enum(["domain", "sso"]).default("domain"),
+}).refine(data => {
+  if (data.authType === "sso") {
+    return !!data.email && z.string().email().safeParse(data.email).success;
+  }
+  return !!data.username && !!data.password;
+}, {
+  message: "Invalid login credentials format.",
+});
 
 // ✅ Centralized SP message constants — no more scattered hardcoded strings
 const LOGIN_MESSAGES = {
@@ -27,6 +43,15 @@ const LOGIN_MESSAGES = {
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || request.headers.get("x-real-ip") || "127.0.0.1";
+    if (isRateLimited(ip, "login", 5, 60 * 1000)) {
+      await logWarning("POST /api/auth/login", "Rate limit exceeded.", { ip });
+      return NextResponse.json(
+        { message: "Too many login attempts. Please try again in a minute." },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json().catch(() => ({}));
     const payload = body?.payload;
     const secretKey =
@@ -60,6 +85,14 @@ export async function POST(request) {
           { status: 400 },
         );
       }
+    }
+
+    // Zod Validation Check
+    const validationResult = loginSchema.safeParse(decryptedData);
+    if (!validationResult.success) {
+      const errorMsg = validationResult.error.errors.map(e => e.message).join(", ");
+      await logWarning("POST /api/auth/login", `Validation failed: ${errorMsg}`);
+      return NextResponse.json({ message: "Invalid request data format: " + errorMsg }, { status: 400 });
     }
 
     const {

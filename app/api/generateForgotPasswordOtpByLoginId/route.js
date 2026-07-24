@@ -3,10 +3,19 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { logError } from "@/lib/errorLogger";
+import { isRateLimited } from "@/lib/rateLimit";
 import nodemailer from "nodemailer";
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || request.headers.get("x-real-ip") || "127.0.0.1";
+    if (isRateLimited(ip, "generate-otp-loginid", 3, 60 * 1000)) {
+      return NextResponse.json(
+        { success: false, message: "Too many requests. Please try again in a minute." },
+        { status: 429 }
+      );
+    }
+
     const { loginId, email } = await request.json();
 
     if (!loginId || !email) {

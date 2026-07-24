@@ -1,4 +1,3 @@
-// app/api/display-names/route.js
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { isInvalid } from "@/lib/generic";
@@ -9,76 +8,60 @@ const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
 
 export async function GET(request) {
   try {
-    // Get headers
     const authHeader = request.headers.get("authorization");
     const loggedInUserId = request.headers.get("loggedInUserId");
 
-    // Validate token
     if (!authHeader || !authHeader.startsWith("Bearer")) {
       return NextResponse.json(
         { success: false, message: "Unauthorized: Token missing" },
-        { status: 401 }
+        { status: 401 },
       );
     }
-
     const token = authHeader.split(" ")[1];
     if (token !== API_SECRET_TOKEN) {
       return NextResponse.json(
         { success: false, message: "Unauthorized: Invalid token" },
-        { status: 401 }
+        { status: 401 },
       );
     }
-
-    // Validate user ID
     if (isInvalid(loggedInUserId)) {
       return NextResponse.json(
         { success: false, message: "Logged-in user ID is missing or invalid." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
-    // CORRECT: Call SP with empty object
-    const result = await executeStoredProcedure("usp_GetDisplayNames", {});
+    const result = await executeStoredProcedure("usp_GetDisplayNames", {}, [
+      { name: "OutputMsg" },
+      { name: "StatusCode" },
+    ]);
 
-    // Check if we got data
-    if (result && result.recordset) {
-      const displayNames = result.recordset || [];
+    const output = result.output || {};
+    const statusCode = Number(output.StatusCode ?? output.statuscode ?? 200);
+    const outputMsg = output.OutputMsg ?? output.outputmsg ?? "Success";
+    const displayNames = result.recordsets?.[0] || result.recordset || [];
 
+    if (statusCode === 200) {
       return NextResponse.json(
         {
           success: true,
-          message: "Display names fetched successfully",
+          message: outputMsg,
           data: displayNames,
           count: displayNames.length,
         },
-        { status: 200 }
-      );
-    }
-    // Alternative if recordsets is used
-    if (result?.recordsets?.length > 0) {
-      const displayNames = result.recordsets[0] || [];
-
-      return NextResponse.json(
-        {
-          success: true,
-          message: "Display names fetched successfully",
-          data: displayNames,
-          count: displayNames.length,
-        },
-        { status: 200 }
+        { status: 200 },
       );
     }
 
     return NextResponse.json(
-      { success: false, message: "No data found" },
-      { status: 404 }
+      { success: false, message: outputMsg },
+      { status: statusCode >= 400 ? statusCode : 500 },
     );
-
   } catch (error) {
     await logError("GET /api/workFlow/coustomMetadataField", error);
     return NextResponse.json(
       { success: false, message: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

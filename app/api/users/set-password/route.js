@@ -4,9 +4,19 @@ import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { getAuditUser, logAudit } from "@/lib/auditLogger";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
+import { isRateLimited } from "@/lib/rateLimit";
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || request.headers.get("x-real-ip") || "127.0.0.1";
+    if (isRateLimited(ip, "set-password", 5, 60 * 1000)) {
+      await logWarning("POST /api/users/set-password", "Rate limit exceeded.", { ip });
+      return NextResponse.json(
+        { success: false, message: "Too many password update attempts. Please try again in a minute." },
+        { status: 429 }
+      );
+    }
+
     const { userId, newPassword } = await request.json();
     const authHeader = request.headers.get("authorization");
     const token = authHeader?.split(" ")[1];

@@ -28,13 +28,8 @@ import { assertSafeTableName } from "@/lib/safeTableName";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // ADD THIS — allow up to 5 minutes for large bulk uploads
-const API_SECRET_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN;
-const ENCRYPTION_KEY =
-  process.env.ENCRYPTION_KEY ||
-  process.env.NEXT_PUBLIC_CLIENT_ENCRYPT_KEY;
-if (!ENCRYPTION_KEY) {
-  throw new Error("ENCRYPTION_KEY environment variable is not set");
-}
+const getAPISecretToken = () => process.env.NEXT_PUBLIC_API_TOKEN;
+const getEncryptionKey = () => process.env.ENCRYPTION_KEY || process.env.NEXT_PUBLIC_CLIENT_ENCRYPT_KEY;
 const MAX_USERS_PER_ORG = 100;
 
 const normalizeIdList = (items, key) =>
@@ -106,7 +101,7 @@ const collectExistingDatabaseConflicts = async (users) => {
               AND email IS NOT NULL
               AND lower(trim(pgp_sym_decrypt(email, $2))) = ANY($1::text[])
           `,
-          [normalizedEmails, ENCRYPTION_KEY],
+          [normalizedEmails, getEncryptionKey()],
         )
       ).rows
     : [];
@@ -209,7 +204,7 @@ export async function POST(request) {
     }
 
     const token = authHeader.split(" ")[1];
-    if (token !== API_SECRET_TOKEN) {
+    if (token !== getAPISecretToken()) {
       await logWarning("POST /api/users/bulk-add", "Invalid API token");
       return NextResponse.json(
         { success: false, message: "Unauthorized: Invalid token" },

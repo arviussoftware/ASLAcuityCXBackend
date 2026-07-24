@@ -3,9 +3,25 @@
 import { NextResponse } from "next/server";
 import { executeStoredProcedure } from "@/lib/sql.js";
 import { logError, logSuccess, logWarning } from "@/lib/errorLogger";
+import { isRateLimited } from "@/lib/rateLimit";
+import { z } from "zod";
+
+const verifyOtpSchema = z.object({
+  otp: z.string().length(6, "OTP must be exactly 6 characters").regex(/^\d+$/, "OTP must contain only digits"),
+  email: z.string().email("Invalid email format").max(255),
+});
 
 export async function POST(request) {
   try {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || request.headers.get("x-real-ip") || "127.0.0.1";
+    if (isRateLimited(ip, "verify-otp", 5, 60 * 1000)) {
+      await logWarning("POST /api/users/verify-otp", "Rate limit exceeded.", { ip });
+      return NextResponse.json(
+        { success: false, message: "Too many OTP validation attempts. Please try again in a minute." },
+        { status: 429 }
+      );
+    }
+
     const rawBody = await request.text();
 
     let body;
@@ -16,6 +32,17 @@ export async function POST(request) {
       return NextResponse.json(
         { success: false, message: "Invalid JSON body." },
         { status: 400 },
+      );
+    }
+
+    // Zod validation check
+    const validationResult = verifyOtpSchema.safeParse(body);
+    if (!validationResult.success) {
+      const errorMsg = validationResult.error.errors.map(e => e.message).join(", ");
+      await logWarning("POST /api/users/verify-otp", `Validation failed: ${errorMsg}`);
+      return NextResponse.json(
+        { success: false, message: "Invalid input data: " + errorMsg },
+        { status: 400 }
       );
     }
 
